@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rook jij? Doe de check!</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Nunito+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --purple-light: #EEEDFE;
+      --purple-mid:   #7F77DD;
+      --purple-dark:  #534AB7;
+      --purple-deep:  #3C3489;
+      --bg:           #F7F6FF;
+      --card-bg:      #FFFFFF;
+      --text:         #1a1a2e;
+      --text-muted:   #6b6b8a;
+      --border:       #e0dff7;
+      --success:      #1D9E75;
+      --warning:      #BA7517;
+      --danger:       #A32D2D;
+      --radius:       16px;
+      --radius-sm:    10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Nunito Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 4rem;
+    }
+
+    /* Decorative blobs */
+    body::before, body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      opacity: 0.18;
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::before {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, #7F77DD, transparent 70%);
+      top: -150px; left: -150px;
+    }
+    body::after {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, #5DCAA5, transparent 70%);
+      bottom: -100px; right: -100px;
+    }
+
+    #app {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 580px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+    .header-icon {
+      width: 48px; height: 48px;
+      border-radius: 14px;
+      background: var(--purple-mid);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 14px rgba(127,119,221,0.35);
+    }
+    .header-icon svg { display: block; }
+    h1 {
+      font-family: 'Nunito', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .subtitle {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-bottom: 1.75rem;
+      padding-left: 62px;
+    }
+
+    /* Progress */
+    .progress-wrap {
+      background: var(--border);
+      border-radius: 99px;
+      height: 8px;
+      margin-bottom: 1.75rem;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 8px;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--purple-mid), #5DCAA5);
+      transition: width 0.45s cubic-bezier(.4,0,.2,1);
+      width: 0%;
+    }
+
+    /* Step counter */
+    .step-counter {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--purple-mid);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+    }
+
+    /* Question card */
+    .question-card {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 2px 16px rgba(127,119,221,0.08);
+      animation: slideIn 0.3s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .question-text {
+      font-family: 'Nunito', sans-serif;
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.45;
+      margin-bottom: 1.4rem;
+    }
+
+    /* Options */
+    .options { display: flex; flex-direction: column; gap: 10px; }
+    .opt-btn {
+      padding: 13px 18px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border);
+      background: #fafafe;
+      color: var(--text);
+      font-family: 'Nunito Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .opt-btn .check {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .opt-btn:hover {
+      border-color: var(--purple-mid);
+      background: var(--purple-light);
+      color: var(--purple-deep);
+      transform: translateX(3px);
+    }
+    .opt-btn:hover .check { border-color: var(--purple-mid); }
+    .opt-btn.selected {
+      border-color: var(--purple-mid);
+      background: var(--purple-light);
+      color: var(--purple-deep);
+    }
+    .opt-btn.selected .check {
+      background: var(--purple-mid);
+      border-color: var(--purple-mid);
+    }
+    .opt-btn.selected .check::after {
+      content: '';
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: white;
+      display: block;
+    }
+
+    /* Nav */
+    .nav-row { display: flex; gap: 10px; }
+    .btn-back {
+      padding: 13px 20px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-family: 'Nunito', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-back:hover { background: var(--border); }
+    .btn-next {
+      flex: 1;
+      padding: 13px 24px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--purple-mid);
+      color: #fff;
+      font-family: 'Nunito', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      box-shadow: 0 3px 12px rgba(127,119,221,0.3);
+    }
+    .btn-next:hover:not(:disabled) { background: var(--purple-dark); transform: translateY(-1px); }
+    .btn-next:active:not(:disabled) { transform: translateY(0); }
+    .btn-next:disabled {
+      background: var(--border);
+      color: var(--text-muted);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Result */
+    .result-card {
+      background: var(--card-bg);
+      border: 2px solid var(--purple-mid);
+      border-radius: var(--radius);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      box-shadow: 0 6px 32px rgba(127,119,221,0.15);
+      animation: popIn 0.4s cubic-bezier(.175,.885,.32,1.275);
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.92); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .result-emoji { font-size: 56px; display: block; margin-bottom: 1rem; }
+    .result-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--purple-dark);
+      background: var(--purple-light);
+      padding: 4px 14px;
+      border-radius: 99px;
+      margin-bottom: 14px;
+    }
+    .result-label {
+      font-family: 'Nunito', sans-serif;
+      font-size: 30px;
+      font-weight: 800;
+      color: var(--purple-deep);
+      margin-bottom: 1rem;
+      line-height: 1.25;
+    }
+    .result-desc {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.75;
+      margin-bottom: 2rem;
+      max-width: 420px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Risk badge on result */
+    .risk-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 16px;
+      border-radius: 99px;
+      margin-bottom: 1.25rem;
+    }
+    .risk-high   { background: #FCEBEB; color: var(--danger); }
+    .risk-medium { background: #FAEEDA; color: var(--warning); }
+    .risk-low    { background: #EAF3DE; color: var(--success); }
+    .risk-none   { background: var(--purple-light); color: var(--purple-deep); }
+
+    .btn-restart {
+      padding: 13px 32px;
+      border-radius: var(--radius-sm);
+      border: 2px solid var(--purple-mid);
+      background: transparent;
+      color: var(--purple-dark);
+      font-family: 'Nunito', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-restart:hover { background: var(--purple-light); transform: translateY(-1px); }
+
+    @media (max-width: 480px) {
+      h1 { font-size: 21px; }
+      .subtitle { padding-left: 0; margin-top: 6px; }
+      .question-text { font-size: 17px; }
+      .result-label { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="header-icon">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+        <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+      </svg>
+    </div>
+    <h1>Rook jij? Doe de check!</h1>
+  </div>
+  <p class="subtitle">Beantwoord een paar vragen en ontdek jouw rookprofiel.</p>
+  <div class="progress-wrap"><div class="progress-fill" id="progress"></div></div>
+  <div id="quiz-area"></div>
+</div>
+
+<script>
+const questions = [
+  {
+    id: "v1",
+    text: "Heb je ooit gerookt, ook al was het maar 1 sigaret?",
+    options: [{ label: "Ja", val: 1 }, { label: "Nee", val: 2 }]
+  },
+  {
+    id: "v2",
+    text: "Hoe lang geleden heb je voor het laatst gerookt?",
+    options: [
+      { label: "Minder dan een week geleden", val: 1 },
+      { label: "Meer dan 1 week, minder dan 2 maanden", val: 2 },
+      { label: "Meer dan 2 maanden, minder dan 6 maanden", val: 3 },
+      { label: "Meer dan 6 maanden geleden", val: 4 }
+    ]
+  },
+  {
+    id: "v3",
+    text: "Denk je dat je in de toekomst ooit een sigaret zult roken?",
+    options: [
+      { label: "Ja, binnen 1 maand", val: 1 },
+      { label: "Ja, binnen 1 jaar", val: 2 },
+      { label: "Ja, binnen 5 jaar", val: 3 },
+      { label: "Ja, binnen 10 jaar", val: 4 },
+      { label: "Ooit wel", val: 5 },
+      { label: "Nooit meer", val: 6 }
+    ]
+  },
+  {
+    id: "v4",
+    text: "Heb je in de afgelopen 7 dagen elke dag 1 of meer sigaretten gerookt?",
+    options: [{ label: "Ja", val: 1 }, { label: "Nee", val: 2 }]
+  },
+  {
+    id: "v5",
+    text: "Hoeveel sigaretten rook je per dag?",
+    options: [
+      { label: "1–5 sigaretten", val: 1 },
+      { label: "6–10 sigaretten", val: 2 },
+      { label: "11–20 sigaretten", val: 3 },
+      { label: "Meer dan 20 sigaretten", val: 4 }
+    ]
+  },
+  {
+    id: "v6",
+    text: "Hoe lang rook je al (elke dag)?",
+    options: [
+      { label: "Minder dan 1 jaar", val: 1 },
+      { label: "1 tot 5 jaar", val: 2 },
+      { label: "Meer dan 5 jaar", val: 3 }
+    ]
+  },
+  {
+    id: "v7",
+    text: "Hoe vaak rook je?",
+    options: [
+      { label: "Elke week", val: 1 },
+      { label: "Elke maand", val: 2 },
+      { label: "Ik ben gestopt", val: 3 }
+    ]
+  },
+  {
+    id: "v8",
+    text: "Hoe lang ben je al gestopt?",
+    options: [
+      { label: "Minder dan 1 maand", val: 1 },
+      { label: "1 tot 6 maanden", val: 2 },
+      { label: "Meer dan 6 maanden", val: 3 }
+    ]
+  },
+  {
+    id: "v9",
+    text: "Hoeveel sigaretten rook je per maand?",
+    options: [
+      { label: "Minder dan 5", val: 1 },
+      { label: "5 tot 10", val: 2 },
+      { label: "Meer dan 10", val: 3 }
+    ]
+  },
+  {
+    id: "v10",
+    text: "Welk stopplan past het beste bij jou?",
+    options: [
+      { label: "Ik wil stoppen binnen 1 maand", val: 1 },
+      { label: "Ik wil stoppen binnen 1 jaar", val: 2 },
+      { label: "Ik wil stoppen binnen 5 jaar", val: 3 },
+      { label: "Ik wil stoppen binnen 10 jaar", val: 4 },
+      { label: "Ik wil minder/lichter gaan roken", val: 5 },
+      { label: "Ik wil ooit stoppen", val: 6 },
+      { label: "Ik wil nooit stoppen", val: 7 }
+    ]
+  }
+];
+
+const results = {
+  "Dagelijkse roker — voorbereiding": {
+    emoji: "💪", risk: "none",
+    desc: "Je rookt elke dag en je bent klaar om binnen een maand te stoppen. Dat is een grote stap! Er zijn veel hulpmiddelen om je te helpen."
+  },
+  "Dagelijkse roker — overweger": {
+    emoji: "🤔", risk: "none",
+    desc: "Je rookt elke dag en denkt erover na om te stoppen, maar bent er nog niet helemaal klaar voor. Geen stress — nadenken is al een begin!"
+  },
+  "Dagelijkse roker — nog niet klaar": {
+    emoji: "🚬", risk: "none",
+    desc: "Je rookt elke dag en stoppen staat nog niet op je radar. Wist je dat zelfs kleine stapjes al een verschil maken?"
+  },
+  "Lichte/onregelmatige roker — voorbereiding": {
+    emoji: "🌟", risk: "none",
+    desc: "Je rookt niet elke dag, maar je wil wél stoppen binnen een maand. Top — je bent op de goede weg!"
+  },
+  "Lichte/onregelmatige roker — overweger": {
+    emoji: "💭", risk: "none",
+    desc: "Je rookt soms en denkt erover om te stoppen. Goed bezig — bewustzijn is de eerste stap!"
+  },
+  "Lichte/onregelmatige roker — nog niet klaar": {
+    emoji: "☁️", risk: "none",
+    desc: "Je rookt af en toe en stoppen staat niet hoog op je lijstje. Dat kan veranderen — en als je wil, is er hulp."
+  },
+  "Ex-roker — hoog risico": {
+    emoji: "⚠️", risk: "high",
+    desc: "Je bent gestopt, maar het risico op terugval is nog redelijk groot. Blijf sterk en zoek steun als het lastig wordt!"
+  },
+  "Ex-roker — gemiddeld risico": {
+    emoji: "👍", risk: "medium",
+    desc: "Je bent al een tijdje gestopt — goed gedaan! Er is nog wat kans op terugval, maar je doet het prima."
+  },
+  "Ex-roker — laag risico": {
+    emoji: "🎉", risk: "low",
+    desc: "Je bent al lang gestopt en denkt niet meer aan roken. Je bent een echt succesverhaal!"
+  },
+  "Nooit-roker — hoog risico": {
+    emoji: "🔴", risk: "high",
+    desc: "Je hebt nog nooit gerookt, maar je overweegt het wél. Pas op — roken lijkt misschien stoer of ontspannend, maar het is snel verslavend. Praat erover met iemand die je vertrouwt!"
+  },
+  "Nooit-roker — gemiddeld risico": {
+    emoji: "🟡", risk: "medium",
+    desc: "Je hebt nooit gerookt en denkt er niet snel aan te beginnen. Goed zo! Hou het zo — jouw longen zullen je dankbaar zijn."
+  },
+  "Nooit-roker — laag risico": {
+    emoji: "✨", risk: "low",
+    desc: "Je hebt nooit gerookt en denkt er absoluut niet aan te beginnen. Geweldig — je maakt de beste keuze voor je gezondheid!"
+  }
+};
+
+const riskLabels = {
+  high: "Hoog risico",
+  medium: "Gemiddeld risico",
+  low: "Laag risico",
+  none: ""
+};
+
+function getLabel(ans) {
+  const v = id => ans[id];
+  if (v("v1") === 2) {
+    if (v("v3") === undefined) return null;
+    if ([1,2].includes(v("v3")))    return "Nooit-roker — hoog risico";
+    if ([3,4,5].includes(v("v3"))) return "Nooit-roker — gemiddeld risico";
+    if (v("v3") === 6)              return "Nooit-roker — laag risico";
+    return null;
+  }
+  if (v("v1") === 1) {
+    if (v("v2") === 1) {
+      if (v("v4") === 1) {
+        if (v("v10") === 1)              return "Dagelijkse roker — voorbereiding";
+        if ([2,3,4].includes(v("v10"))) return "Dagelijkse roker — overweger";
+        if ([5,6,7].includes(v("v10"))) return "Dagelijkse roker — nog niet klaar";
+      }
+      if (v("v4") === 2) {
+        if (v("v10") === 1)              return "Lichte/onregelmatige roker — voorbereiding";
+        if ([2,3,4].includes(v("v10"))) return "Lichte/onregelmatige roker — overweger";
+        if ([5,6,7].includes(v("v10"))) return "Lichte/onregelmatige roker — nog niet klaar";
+      }
+    }
+    if ([2,3,4].includes(v("v2"))) {
+      if ([1,2].includes(v("v7"))) {
+        if (v("v10") === 1)              return "Lichte/onregelmatige roker — voorbereiding";
+        if ([2,3,4].includes(v("v10"))) return "Lichte/onregelmatige roker — overweger";
+        if ([5,6,7].includes(v("v10"))) return "Lichte/onregelmatige roker — nog niet klaar";
+      }
+      if (v("v7") === 3) {
+        if ([1,2].includes(v("v3")))   return "Ex-roker — hoog risico";
+        if ([3,4,5].includes(v("v3"))) return "Ex-roker — gemiddeld risico";
+        if (v("v3") === 6)             return "Ex-roker — laag risico";
+      }
+    }
+  }
+  return null;
+}
+
+function getFlow(ans) {
+  const v = id => ans[id];
+  if (v("v1") === undefined) return ["v1"];
+  if (v("v1") === 2)         return ["v1", "v3"];
+  if (v("v2") === undefined) return ["v1", "v2"];
+  if (v("v2") === 1) {
+    if (v("v4") === undefined) return ["v1", "v2", "v4"];
+    if (v("v4") === 1)  return ["v1", "v2", "v4", "v5", "v6", "v10"];
+    if (v("v4") === 2)  return ["v1", "v2", "v4", "v7", "v9", "v10"];
+  }
+  if ([2,3,4].includes(v("v2"))) {
+    if (v("v7") === undefined) return ["v1", "v2", "v7"];
+    if ([1,2].includes(v("v7"))) return ["v1", "v2", "v7", "v9", "v10"];
+    if (v("v7") === 3)           return ["v1", "v2", "v7", "v8", "v3"];
+  }
+  return ["v1"];
+}
+
+let answers = {};
+let flowIds = ["v1"];
+let currentStep = 0;
+
+function updateProgress() {
+  const pct = flowIds.length <= 1 ? 0 : (currentStep / flowIds.length * 100);
+  document.getElementById("progress").style.width = pct + "%";
+}
+
+function render() {
+  const area = document.getElementById("quiz-area");
+  const qId = flowIds[currentStep];
+  if (!qId) { showResult(); return; }
+  const q = questions.find(x => x.id === qId);
+  if (!q) { showResult(); return; }
+  const selected = answers[qId];
+  const total = flowIds.length;
+
+  area.innerHTML = `
+    <div class="step-counter">Vraag ${currentStep + 1} van ${Math.max(total, currentStep + 2)}</div>
+    <div class="question-card">
+      <div class="question-text">${q.text}</div>
+      <div class="options">
+        ${q.options.map(o => `
+          <button class="opt-btn${selected === o.val ? " selected" : ""}"
+                  onclick="selectAnswer('${qId}', ${o.val})">
+            <span class="check">${selected === o.val ? "" : ""}</span>
+            ${o.label}
+          </button>
+        `).join("")}
+      </div>
+    </div>
+    <div class="nav-row">
+      ${currentStep > 0 ? `<button class="btn-back" onclick="goBack()">← Terug</button>` : ""}
+      <button class="btn-next" ${selected === undefined ? "disabled" : ""} onclick="goNext()">
+        Volgende →
+      </button>
+    </div>
+  `;
+  updateProgress();
+}
+
+function selectAnswer(qId, val) {
+  answers[qId] = val;
+  const newFlow = getFlow(answers);
+  flowIds.forEach(id => { if (!newFlow.includes(id) && id !== qId) delete answers[id]; });
+  flowIds = newFlow;
+  render();
+}
+
+function goNext() {
+  if (answers[flowIds[currentStep]] === undefined) return;
+  currentStep++;
+  if (currentStep >= flowIds.length) { showResult(); return; }
+  if (getLabel(answers)) { showResult(); return; }
+  render();
+}
+
+function goBack() {
+  if (currentStep > 0) { currentStep--; render(); }
+}
+
+function showResult() {
+  document.getElementById("progress").style.width = "100%";
+  const label = getLabel(answers) || "Onbekend rookprofiel";
+  const r = results[label] || { emoji: "❓", risk: "none", desc: "Probeer de vragen opnieuw te beantwoorden." };
+  const riskClass = r.risk !== "none" ? `risk-${r.risk}` : "";
+  const riskText  = r.risk !== "none" ? riskLabels[r.risk] : "";
+
+  document.getElementById("quiz-area").innerHTML = `
+    <div class="result-card">
+      <span class="result-emoji">${r.emoji}</span>
+      <div class="result-tag">Jouw profiel</div><br>
+      ${riskClass ? `<span class="risk-badge ${riskClass}">${riskText}</span><br>` : ""}
+      <div class="result-label">${label}</div>
+      <div class="result-desc">${r.desc}</div>
+      <button class="btn-restart" onclick="restart()">↺ Opnieuw beginnen</button>
+    </div>
+  `;
+}
+
+function restart() {
+  answers = {}; flowIds = ["v1"]; currentStep = 0; render();
+}
+
+render();
+</script>
+</body>
+</html>
