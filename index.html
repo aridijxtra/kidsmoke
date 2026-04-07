@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Rook jij? Doe de check!</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Nunito+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
+    /* ── TOKENS ── */
     :root {
       --purple-light: #EEEDFE;
       --purple-mid:   #7F77DD;
@@ -22,9 +26,7 @@
       --radius:       16px;
       --radius-sm:    10px;
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: 'Nunito Sans', sans-serif;
       background: var(--bg);
@@ -35,15 +37,9 @@
       align-items: center;
       padding: 2rem 1rem 4rem;
     }
-
-    /* Decorative blobs */
     body::before, body::after {
-      content: '';
-      position: fixed;
-      border-radius: 50%;
-      opacity: 0.18;
-      pointer-events: none;
-      z-index: 0;
+      content: ''; position: fixed; border-radius: 50%;
+      opacity: 0.15; pointer-events: none; z-index: 0;
     }
     body::before {
       width: 500px; height: 500px;
@@ -55,436 +51,381 @@
       background: radial-gradient(circle, #5DCAA5, transparent 70%);
       bottom: -100px; right: -100px;
     }
+    #app { position: relative; z-index: 1; width: 100%; max-width: 680px; }
 
-    #app {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      max-width: 580px;
+    /* ── CONFIG BANNER ── */
+    #config-banner {
+      background: #FAEEDA; border: 1.5px solid #EF9F27;
+      border-radius: var(--radius); padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem; font-size: 14px; line-height: 1.7;
+      color: #633806;
     }
+    #config-banner strong { font-weight: 800; }
+    #config-banner code {
+      background: rgba(0,0,0,0.08); padding: 2px 6px;
+      border-radius: 4px; font-family: monospace; font-size: 13px;
+    }
+    #config-banner ol { padding-left: 1.25rem; margin-top: 8px; }
+    #config-banner li { margin-bottom: 4px; }
 
-    /* Header */
-    .header {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 8px;
+    /* ── TABS ── */
+    .tab-bar {
+      display: flex; gap: 8px; margin-bottom: 1.5rem;
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 6px;
     }
+    .tab-btn {
+      flex: 1; padding: 10px 16px; border-radius: var(--radius-sm);
+      border: none; background: transparent; color: var(--text-muted);
+      font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .tab-btn.active { background: var(--purple-mid); color: #fff; box-shadow: 0 2px 10px rgba(127,119,221,0.3); }
+    .tab-btn:not(.active):hover { background: var(--purple-light); color: var(--purple-deep); }
+
+    /* ── HEADER ── */
+    .header { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
     .header-icon {
-      width: 48px; height: 48px;
-      border-radius: 14px;
-      background: var(--purple-mid);
+      width: 48px; height: 48px; border-radius: 14px;
+      background: var(--purple-mid); flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
       box-shadow: 0 4px 14px rgba(127,119,221,0.35);
     }
-    .header-icon svg { display: block; }
-    h1 {
-      font-family: 'Nunito', sans-serif;
-      font-size: 26px;
-      font-weight: 800;
-      color: var(--text);
-      line-height: 1.2;
-    }
-    .subtitle {
-      font-size: 15px;
-      color: var(--text-muted);
-      margin-bottom: 1.75rem;
-      padding-left: 62px;
-    }
+    h1 { font-family: 'Nunito', sans-serif; font-size: 26px; font-weight: 800; color: var(--text); line-height: 1.2; }
+    .subtitle { font-size: 15px; color: var(--text-muted); margin-bottom: 1.75rem; padding-left: 62px; }
 
-    /* Progress */
-    .progress-wrap {
-      background: var(--border);
-      border-radius: 99px;
-      height: 8px;
-      margin-bottom: 1.75rem;
-      overflow: hidden;
-    }
+    /* ── PROGRESS ── */
+    .progress-wrap { background: var(--border); border-radius: 99px; height: 8px; margin-bottom: 1.75rem; overflow: hidden; }
     .progress-fill {
-      height: 8px;
-      border-radius: 99px;
+      height: 8px; border-radius: 99px;
       background: linear-gradient(90deg, var(--purple-mid), #5DCAA5);
-      transition: width 0.45s cubic-bezier(.4,0,.2,1);
-      width: 0%;
+      transition: width 0.45s cubic-bezier(.4,0,.2,1); width: 0%;
     }
+    .step-counter { font-size: 12px; font-weight: 600; color: var(--purple-mid); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
 
-    /* Step counter */
-    .step-counter {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--purple-mid);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 10px;
-    }
-
-    /* Question card */
+    /* ── QUESTION CARD ── */
     .question-card {
-      background: var(--card-bg);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.75rem;
-      margin-bottom: 1.25rem;
+      background: var(--card-bg); border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 1.75rem; margin-bottom: 1.25rem;
       box-shadow: 0 2px 16px rgba(127,119,221,0.08);
       animation: slideIn 0.3s cubic-bezier(.4,0,.2,1);
     }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .question-text {
-      font-family: 'Nunito', sans-serif;
-      font-size: 19px;
-      font-weight: 700;
-      color: var(--text);
-      line-height: 1.45;
-      margin-bottom: 1.4rem;
-    }
+    @keyframes slideIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+    .question-text { font-family: 'Nunito', sans-serif; font-size: 19px; font-weight: 700; line-height: 1.45; margin-bottom: 1.4rem; }
 
-    /* Options */
+    /* ── OPTIONS ── */
     .options { display: flex; flex-direction: column; gap: 10px; }
     .opt-btn {
-      padding: 13px 18px;
-      border-radius: var(--radius-sm);
-      border: 1.5px solid var(--border);
-      background: #fafafe;
-      color: var(--text);
-      font-family: 'Nunito Sans', sans-serif;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      text-align: left;
-      transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.1s;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      padding: 13px 18px; border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border); background: #fafafe;
+      color: var(--text); font-family: 'Nunito Sans', sans-serif;
+      font-size: 15px; font-weight: 600; cursor: pointer; text-align: left;
+      transition: all 0.15s; display: flex; align-items: center; gap: 10px;
     }
     .opt-btn .check {
       width: 20px; height: 20px; border-radius: 50%;
-      border: 2px solid var(--border);
-      flex-shrink: 0;
+      border: 2px solid var(--border); flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
       transition: background 0.15s, border-color 0.15s;
     }
-    .opt-btn:hover {
-      border-color: var(--purple-mid);
-      background: var(--purple-light);
-      color: var(--purple-deep);
-      transform: translateX(3px);
-    }
+    .opt-btn:hover { border-color: var(--purple-mid); background: var(--purple-light); color: var(--purple-deep); transform: translateX(3px); }
     .opt-btn:hover .check { border-color: var(--purple-mid); }
-    .opt-btn.selected {
-      border-color: var(--purple-mid);
-      background: var(--purple-light);
-      color: var(--purple-deep);
-    }
-    .opt-btn.selected .check {
-      background: var(--purple-mid);
-      border-color: var(--purple-mid);
-    }
-    .opt-btn.selected .check::after {
-      content: '';
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: white;
-      display: block;
-    }
+    .opt-btn.selected { border-color: var(--purple-mid); background: var(--purple-light); color: var(--purple-deep); }
+    .opt-btn.selected .check { background: var(--purple-mid); border-color: var(--purple-mid); }
+    .opt-btn.selected .check::after { content:''; width:7px; height:7px; border-radius:50%; background:white; display:block; }
 
-    /* Nav */
+    /* ── NAV ── */
     .nav-row { display: flex; gap: 10px; }
     .btn-back {
-      padding: 13px 20px;
-      border-radius: var(--radius-sm);
-      border: 1.5px solid var(--border);
-      background: transparent;
-      color: var(--text-muted);
-      font-family: 'Nunito', sans-serif;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.15s;
+      padding: 13px 20px; border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border); background: transparent;
+      color: var(--text-muted); font-family: 'Nunito', sans-serif;
+      font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.15s;
     }
     .btn-back:hover { background: var(--border); }
     .btn-next {
-      flex: 1;
-      padding: 13px 24px;
-      border-radius: var(--radius-sm);
-      border: none;
-      background: var(--purple-mid);
-      color: #fff;
-      font-family: 'Nunito', sans-serif;
-      font-size: 15px;
-      font-weight: 800;
-      cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
+      flex: 1; padding: 13px 24px; border-radius: var(--radius-sm);
+      border: none; background: var(--purple-mid); color: #fff;
+      font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800;
+      cursor: pointer; transition: all 0.15s;
       box-shadow: 0 3px 12px rgba(127,119,221,0.3);
     }
     .btn-next:hover:not(:disabled) { background: var(--purple-dark); transform: translateY(-1px); }
-    .btn-next:active:not(:disabled) { transform: translateY(0); }
-    .btn-next:disabled {
-      background: var(--border);
-      color: var(--text-muted);
-      cursor: not-allowed;
-      box-shadow: none;
-    }
+    .btn-next:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; box-shadow: none; }
 
-    /* Result */
+    /* ── RESULT ── */
     .result-card {
-      background: var(--card-bg);
-      border: 2px solid var(--purple-mid);
-      border-radius: var(--radius);
-      padding: 2.5rem 2rem;
-      text-align: center;
+      background: var(--card-bg); border: 2px solid var(--purple-mid);
+      border-radius: var(--radius); padding: 2.5rem 2rem; text-align: center;
       box-shadow: 0 6px 32px rgba(127,119,221,0.15);
       animation: popIn 0.4s cubic-bezier(.175,.885,.32,1.275);
     }
-    @keyframes popIn {
-      from { opacity: 0; transform: scale(0.92); }
-      to   { opacity: 1; transform: scale(1); }
-    }
+    @keyframes popIn { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
     .result-emoji { font-size: 56px; display: block; margin-bottom: 1rem; }
     .result-tag {
-      display: inline-block;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--purple-dark);
-      background: var(--purple-light);
-      padding: 4px 14px;
-      border-radius: 99px;
-      margin-bottom: 14px;
+      display: inline-block; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--purple-dark); background: var(--purple-light);
+      padding: 4px 14px; border-radius: 99px; margin-bottom: 14px;
     }
-    .result-label {
-      font-family: 'Nunito', sans-serif;
-      font-size: 30px;
-      font-weight: 800;
-      color: var(--purple-deep);
-      margin-bottom: 1rem;
-      line-height: 1.25;
-    }
-    .result-desc {
-      font-size: 15px;
-      color: var(--text-muted);
-      line-height: 1.75;
-      margin-bottom: 2rem;
-      max-width: 420px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    /* Risk badge on result */
-    .risk-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      font-weight: 700;
-      padding: 6px 16px;
-      border-radius: 99px;
-      margin-bottom: 1.25rem;
-    }
+    .result-label { font-family: 'Nunito', sans-serif; font-size: 30px; font-weight: 800; color: var(--purple-deep); margin-bottom: 1rem; line-height: 1.25; }
+    .result-desc { font-size: 15px; color: var(--text-muted); line-height: 1.75; margin-bottom: 1.5rem; max-width: 420px; margin-left: auto; margin-right: auto; }
+    .risk-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; padding: 6px 16px; border-radius: 99px; margin-bottom: 1.25rem; }
     .risk-high   { background: #FCEBEB; color: var(--danger); }
     .risk-medium { background: #FAEEDA; color: var(--warning); }
     .risk-low    { background: #EAF3DE; color: var(--success); }
-    .risk-none   { background: var(--purple-light); color: var(--purple-deep); }
-
+    .saved-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--success); background: #EAF3DE; padding: 6px 16px; border-radius: 99px; }
+    .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 1.25rem; }
     .btn-restart {
-      padding: 13px 32px;
-      border-radius: var(--radius-sm);
-      border: 2px solid var(--purple-mid);
-      background: transparent;
-      color: var(--purple-dark);
-      font-family: 'Nunito', sans-serif;
-      font-size: 15px;
-      font-weight: 800;
-      cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
+      padding: 13px 28px; border-radius: var(--radius-sm);
+      border: 2px solid var(--purple-mid); background: transparent;
+      color: var(--purple-dark); font-family: 'Nunito', sans-serif;
+      font-size: 15px; font-weight: 800; cursor: pointer; transition: all 0.15s;
     }
-    .btn-restart:hover { background: var(--purple-light); transform: translateY(-1px); }
+    .btn-restart:hover { background: var(--purple-light); }
+    .btn-dashboard {
+      padding: 13px 28px; border-radius: var(--radius-sm);
+      border: none; background: var(--purple-mid); color: #fff;
+      font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800;
+      cursor: pointer; transition: all 0.15s;
+      box-shadow: 0 3px 12px rgba(127,119,221,0.3);
+    }
+    .btn-dashboard:hover { background: var(--purple-dark); }
+
+    /* ── DASHBOARD ── */
+    #dashboard { display: none; }
+    .dash-header { margin-bottom: 1.25rem; }
+    .dash-header h2 { font-family: 'Nunito', sans-serif; font-size: 22px; font-weight: 800; }
+    .dash-header p { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+    .stats-row { display: flex; gap: 12px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .stat-card {
+      flex: 1; min-width: 140px;
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 1rem 1.25rem;
+    }
+    .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .stat-value { font-family: 'Nunito', sans-serif; font-size: 28px; font-weight: 800; color: var(--purple-deep); }
+    .stat-value-sm { font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; color: var(--purple-deep); padding-top: 4px; line-height: 1.5; }
+    .chart-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem;
+      box-shadow: 0 2px 12px rgba(127,119,221,0.07);
+    }
+    .chart-title { font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 800; margin-bottom: 1.25rem; }
+    .chart-wrap { position: relative; height: 370px; }
+    .loading-msg { text-align: center; padding: 3rem; color: var(--text-muted); font-size: 15px; }
+    .btn-refresh {
+      padding: 9px 18px; border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border); background: transparent;
+      color: var(--text-muted); font-family: 'Nunito', sans-serif;
+      font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+      margin-bottom: 1rem;
+    }
+    .btn-refresh:hover { background: var(--purple-light); border-color: var(--purple-mid); color: var(--purple-deep); }
+    .error-msg {
+      background: #FCEBEB; border: 1px solid #F09595;
+      border-radius: var(--radius-sm); padding: 1rem 1.25rem;
+      font-size: 14px; color: var(--danger); line-height: 1.6;
+    }
 
     @media (max-width: 480px) {
       h1 { font-size: 21px; }
       .subtitle { padding-left: 0; margin-top: 6px; }
       .question-text { font-size: 17px; }
       .result-label { font-size: 24px; }
+      .chart-wrap { height: 480px; }
     }
   </style>
 </head>
 <body>
 <div id="app">
-  <div class="header">
-    <div class="header-icon">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-        <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
-      </svg>
-    </div>
-    <h1>Rook jij? Doe de check!</h1>
+
+  <!-- ══ CONFIGURATION BANNER (remove after setup) ══ -->
+  <div id="config-banner">
+    <strong>⚙️ Eenmalige Supabase-instelling nodig</strong><br>
+    Pas de twee regels bovenaan het &lt;script&gt; aan met jouw eigen gegevens:
+    <ol>
+      <li>Maak een gratis account op <strong>supabase.com</strong></li>
+      <li>Maak een nieuw project aan (kies een regio dicht bij Nederland)</li>
+      <li>Ga naar <strong>Project Settings → API</strong> en kopieer:<br>
+        – <code>Project URL</code> → plak in <code>SUPABASE_URL</code><br>
+        – <code>anon public key</code> → plak in <code>SUPABASE_ANON_KEY</code>
+      </li>
+      <li>Ga naar <strong>SQL Editor</strong> en voer dit SQL-commando uit:<br>
+        <code>CREATE TABLE results (id bigint generated always as identity primary key, label text not null, created_at timestamptz default now());</code>
+      </li>
+      <li>Ga naar <strong>Authentication → Policies</strong>, klik op de tabel <code>results</code> en schakel <strong>Row Level Security</strong> uit (of voeg een INSERT + SELECT policy toe voor <code>anon</code>).</li>
+      <li>Verwijder dit gele blok uit de HTML als alles werkt.</li>
+    </ol>
   </div>
-  <p class="subtitle">Beantwoord een paar vragen en ontdek jouw rookprofiel.</p>
-  <div class="progress-wrap"><div class="progress-fill" id="progress"></div></div>
-  <div id="quiz-area"></div>
-</div>
+
+  <!-- ══ TABS ══ -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-quiz" onclick="showTab('quiz')">📋 Quiz</button>
+    <button class="tab-btn" id="tab-dash" onclick="showTab('dashboard')">📊 Dashboard</button>
+  </div>
+
+  <!-- ══ QUIZ VIEW ══ -->
+  <div id="quiz-view">
+    <div class="header">
+      <div class="header-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+          <line x1="6" y1="1" x2="6" y2="4"/>
+          <line x1="10" y1="1" x2="10" y2="4"/>
+          <line x1="14" y1="1" x2="14" y2="4"/>
+        </svg>
+      </div>
+      <h1>Rook jij? Doe de check!</h1>
+    </div>
+    <p class="subtitle">Beantwoord een paar vragen en ontdek jouw rookprofiel.</p>
+    <div class="progress-wrap"><div class="progress-fill" id="progress"></div></div>
+    <div id="quiz-area"></div>
+  </div>
+
+  <!-- ══ DASHBOARD VIEW ══ -->
+  <div id="dashboard">
+    <div class="dash-header">
+      <h2>📊 Resultaten dashboard</h2>
+      <p>Alle ingevulde profielen van alle gebruikers</p>
+    </div>
+    <button class="btn-refresh" onclick="loadDashboard()">↺ Vernieuwen</button>
+    <div id="dash-content"><div class="loading-msg">Gegevens laden…</div></div>
+  </div>
+
+</div><!-- #app -->
 
 <script>
-const questions = [
-  {
-    id: "v1",
-    text: "Heb je ooit gerookt, ook al was het maar 1 sigaret?",
-    options: [{ label: "Ja", val: 1 }, { label: "Nee", val: 2 }]
-  },
-  {
-    id: "v2",
-    text: "Hoe lang geleden heb je voor het laatst gerookt?",
-    options: [
-      { label: "Minder dan een week geleden", val: 1 },
-      { label: "Meer dan 1 week, minder dan 2 maanden", val: 2 },
-      { label: "Meer dan 2 maanden, minder dan 6 maanden", val: 3 },
-      { label: "Meer dan 6 maanden geleden", val: 4 }
-    ]
-  },
-  {
-    id: "v3",
-    text: "Denk je dat je in de toekomst ooit een sigaret zult roken?",
-    options: [
-      { label: "Ja, binnen 1 maand", val: 1 },
-      { label: "Ja, binnen 1 jaar", val: 2 },
-      { label: "Ja, binnen 5 jaar", val: 3 },
-      { label: "Ja, binnen 10 jaar", val: 4 },
-      { label: "Ooit wel", val: 5 },
-      { label: "Nooit meer", val: 6 }
-    ]
-  },
-  {
-    id: "v4",
-    text: "Heb je in de afgelopen 7 dagen elke dag 1 of meer sigaretten gerookt?",
-    options: [{ label: "Ja", val: 1 }, { label: "Nee", val: 2 }]
-  },
-  {
-    id: "v5",
-    text: "Hoeveel sigaretten rook je per dag?",
-    options: [
-      { label: "1–5 sigaretten", val: 1 },
-      { label: "6–10 sigaretten", val: 2 },
-      { label: "11–20 sigaretten", val: 3 },
-      { label: "Meer dan 20 sigaretten", val: 4 }
-    ]
-  },
-  {
-    id: "v6",
-    text: "Hoe lang rook je al (elke dag)?",
-    options: [
-      { label: "Minder dan 1 jaar", val: 1 },
-      { label: "1 tot 5 jaar", val: 2 },
-      { label: "Meer dan 5 jaar", val: 3 }
-    ]
-  },
-  {
-    id: "v7",
-    text: "Hoe vaak rook je?",
-    options: [
-      { label: "Elke week", val: 1 },
-      { label: "Elke maand", val: 2 },
-      { label: "Ik ben gestopt", val: 3 }
-    ]
-  },
-  {
-    id: "v8",
-    text: "Hoe lang ben je al gestopt?",
-    options: [
-      { label: "Minder dan 1 maand", val: 1 },
-      { label: "1 tot 6 maanden", val: 2 },
-      { label: "Meer dan 6 maanden", val: 3 }
-    ]
-  },
-  {
-    id: "v9",
-    text: "Hoeveel sigaretten rook je per maand?",
-    options: [
-      { label: "Minder dan 5", val: 1 },
-      { label: "5 tot 10", val: 2 },
-      { label: "Meer dan 10", val: 3 }
-    ]
-  },
-  {
-    id: "v10",
-    text: "Welk stopplan past het beste bij jou?",
-    options: [
-      { label: "Ik wil stoppen binnen 1 maand", val: 1 },
-      { label: "Ik wil stoppen binnen 1 jaar", val: 2 },
-      { label: "Ik wil stoppen binnen 5 jaar", val: 3 },
-      { label: "Ik wil stoppen binnen 10 jaar", val: 4 },
-      { label: "Ik wil minder/lichter gaan roken", val: 5 },
-      { label: "Ik wil ooit stoppen", val: 6 },
-      { label: "Ik wil nooit stoppen", val: 7 }
-    ]
+/* ════════════════════════════════════════════════════════════════
+   STAP 1: VUL HIER JOUW SUPABASE-GEGEVENS IN
+   ════════════════════════════════════════════════════════════════ */
+const SUPABASE_URL      = 'JOUW_SUPABASE_URL_HIER';        // bv. https://xyzxyz.supabase.co
+const SUPABASE_ANON_KEY = 'JOUW_SUPABASE_ANON_KEY_HIER';   // begint met eyJ...
+
+/* ════════════════════════════════════════════════════════════════
+   SUPABASE CLIENT
+   ════════════════════════════════════════════════════════════════ */
+let db = null;
+function getDB() {
+  if (!db) db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return db;
+}
+function isConfigured() {
+  return SUPABASE_URL !== 'JOUW_SUPABASE_URL_HIER' && SUPABASE_ANON_KEY !== 'JOUW_SUPABASE_ANON_KEY_HIER';
+}
+
+/* ── Save a result row ── */
+async function saveResult(label) {
+  if (!isConfigured()) return { ok: false, msg: 'Supabase nog niet ingesteld.' };
+  try {
+    const { error } = await getDB().from('results').insert({ label });
+    if (error) throw error;
+    return { ok: true };
+  } catch(e) {
+    console.error('saveResult:', e);
+    return { ok: false, msg: e.message };
   }
+}
+
+/* ── Load aggregated counts ── */
+async function loadCounts() {
+  if (!isConfigured()) return null;
+  try {
+    const { data, error } = await getDB().from('results').select('label');
+    if (error) throw error;
+    const counts = {};
+    (data || []).forEach(row => { counts[row.label] = (counts[row.label] || 0) + 1; });
+    return counts;
+  } catch(e) {
+    console.error('loadCounts:', e);
+    return null;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DATA
+   ════════════════════════════════════════════════════════════════ */
+const ALL_LABELS = [
+  "Dagelijkse roker — voorbereiding",
+  "Dagelijkse roker — overweger",
+  "Dagelijkse roker — nog niet klaar",
+  "Lichte/onregelmatige roker — voorbereiding",
+  "Lichte/onregelmatige roker — overweger",
+  "Lichte/onregelmatige roker — nog niet klaar",
+  "Ex-roker — hoog risico",
+  "Ex-roker — gemiddeld risico",
+  "Ex-roker — laag risico",
+  "Nooit-roker — hoog risico",
+  "Nooit-roker — gemiddeld risico",
+  "Nooit-roker — laag risico"
+];
+const SHORT_LABELS = [
+  "Dagelijks — voorbereiding",
+  "Dagelijks — overweger",
+  "Dagelijks — niet klaar",
+  "Licht — voorbereiding",
+  "Licht — overweger",
+  "Licht — niet klaar",
+  "Ex-roker — hoog",
+  "Ex-roker — gemiddeld",
+  "Ex-roker — laag",
+  "Nooit — hoog risico",
+  "Nooit — gemiddeld",
+  "Nooit — laag risico"
+];
+const BAR_COLORS = [
+  "#E24B4A","#F09595","#F7C1C1",
+  "#EF9F27","#FAC775","#FAEEDA",
+  "#7F77DD","#AFA9EC","#CECBF6",
+  "#1D9E75","#5DCAA5","#9FE1CB"
 ];
 
-const results = {
-  "Dagelijkse roker — voorbereiding": {
-    emoji: "💪", risk: "none",
-    desc: "Je rookt elke dag en je bent klaar om binnen een maand te stoppen. Dat is een grote stap! Er zijn veel hulpmiddelen om je te helpen."
-  },
-  "Dagelijkse roker — overweger": {
-    emoji: "🤔", risk: "none",
-    desc: "Je rookt elke dag en denkt erover na om te stoppen, maar bent er nog niet helemaal klaar voor. Geen stress — nadenken is al een begin!"
-  },
-  "Dagelijkse roker — nog niet klaar": {
-    emoji: "🚬", risk: "none",
-    desc: "Je rookt elke dag en stoppen staat nog niet op je radar. Wist je dat zelfs kleine stapjes al een verschil maken?"
-  },
-  "Lichte/onregelmatige roker — voorbereiding": {
-    emoji: "🌟", risk: "none",
-    desc: "Je rookt niet elke dag, maar je wil wél stoppen binnen een maand. Top — je bent op de goede weg!"
-  },
-  "Lichte/onregelmatige roker — overweger": {
-    emoji: "💭", risk: "none",
-    desc: "Je rookt soms en denkt erover om te stoppen. Goed bezig — bewustzijn is de eerste stap!"
-  },
-  "Lichte/onregelmatige roker — nog niet klaar": {
-    emoji: "☁️", risk: "none",
-    desc: "Je rookt af en toe en stoppen staat niet hoog op je lijstje. Dat kan veranderen — en als je wil, is er hulp."
-  },
-  "Ex-roker — hoog risico": {
-    emoji: "⚠️", risk: "high",
-    desc: "Je bent gestopt, maar het risico op terugval is nog redelijk groot. Blijf sterk en zoek steun als het lastig wordt!"
-  },
-  "Ex-roker — gemiddeld risico": {
-    emoji: "👍", risk: "medium",
-    desc: "Je bent al een tijdje gestopt — goed gedaan! Er is nog wat kans op terugval, maar je doet het prima."
-  },
-  "Ex-roker — laag risico": {
-    emoji: "🎉", risk: "low",
-    desc: "Je bent al lang gestopt en denkt niet meer aan roken. Je bent een echt succesverhaal!"
-  },
-  "Nooit-roker — hoog risico": {
-    emoji: "🔴", risk: "high",
-    desc: "Je hebt nog nooit gerookt, maar je overweegt het wél. Pas op — roken lijkt misschien stoer of ontspannend, maar het is snel verslavend. Praat erover met iemand die je vertrouwt!"
-  },
-  "Nooit-roker — gemiddeld risico": {
-    emoji: "🟡", risk: "medium",
-    desc: "Je hebt nooit gerookt en denkt er niet snel aan te beginnen. Goed zo! Hou het zo — jouw longen zullen je dankbaar zijn."
-  },
-  "Nooit-roker — laag risico": {
-    emoji: "✨", risk: "low",
-    desc: "Je hebt nooit gerookt en denkt er absoluut niet aan te beginnen. Geweldig — je maakt de beste keuze voor je gezondheid!"
-  }
+const questions = [
+  { id:"v1", text:"Heb je ooit gerookt, ook al was het maar 1 sigaret?",
+    options:[{label:"Ja",val:1},{label:"Nee",val:2}] },
+  { id:"v2", text:"Hoe lang geleden heb je voor het laatst gerookt?",
+    options:[{label:"Minder dan een week geleden",val:1},{label:"Meer dan 1 week, minder dan 2 maanden",val:2},{label:"Meer dan 2 maanden, minder dan 6 maanden",val:3},{label:"Meer dan 6 maanden geleden",val:4}] },
+  { id:"v3", text:"Denk je dat je in de toekomst ooit een sigaret zult roken?",
+    options:[{label:"Ja, binnen 1 maand",val:1},{label:"Ja, binnen 1 jaar",val:2},{label:"Ja, binnen 5 jaar",val:3},{label:"Ja, binnen 10 jaar",val:4},{label:"Ooit wel",val:5},{label:"Nooit meer",val:6}] },
+  { id:"v4", text:"Heb je in de afgelopen 7 dagen elke dag 1 of meer sigaretten gerookt?",
+    options:[{label:"Ja",val:1},{label:"Nee",val:2}] },
+  { id:"v5", text:"Hoeveel sigaretten rook je per dag?",
+    options:[{label:"1–5 sigaretten",val:1},{label:"6–10 sigaretten",val:2},{label:"11–20 sigaretten",val:3},{label:"Meer dan 20 sigaretten",val:4}] },
+  { id:"v6", text:"Hoe lang rook je al (elke dag)?",
+    options:[{label:"Minder dan 1 jaar",val:1},{label:"1 tot 5 jaar",val:2},{label:"Meer dan 5 jaar",val:3}] },
+  { id:"v7", text:"Hoe vaak rook je?",
+    options:[{label:"Elke week",val:1},{label:"Elke maand",val:2},{label:"Ik ben gestopt",val:3}] },
+  { id:"v8", text:"Hoe lang ben je al gestopt?",
+    options:[{label:"Minder dan 1 maand",val:1},{label:"1 tot 6 maanden",val:2},{label:"Meer dan 6 maanden",val:3}] },
+  { id:"v9", text:"Hoeveel sigaretten rook je per maand?",
+    options:[{label:"Minder dan 5",val:1},{label:"5 tot 10",val:2},{label:"Meer dan 10",val:3}] },
+  { id:"v10", text:"Welk stopplan past het beste bij jou?",
+    options:[{label:"Ik wil stoppen binnen 1 maand",val:1},{label:"Ik wil stoppen binnen 1 jaar",val:2},{label:"Ik wil stoppen binnen 5 jaar",val:3},{label:"Ik wil stoppen binnen 10 jaar",val:4},{label:"Ik wil minder/lichter gaan roken",val:5},{label:"Ik wil ooit stoppen",val:6},{label:"Ik wil nooit stoppen",val:7}] }
+];
+
+const resultData = {
+  "Dagelijkse roker — voorbereiding":            { emoji:"💪", risk:"none", desc:"Je rookt elke dag en je bent klaar om binnen een maand te stoppen. Dat is een grote stap!" },
+  "Dagelijkse roker — overweger":                { emoji:"🤔", risk:"none", desc:"Je rookt elke dag en denkt erover na om te stoppen. Nadenken is al een begin!" },
+  "Dagelijkse roker — nog niet klaar":           { emoji:"🚬", risk:"none", desc:"Je rookt elke dag en stoppen staat nog niet op je radar. Zelfs kleine stapjes maken al een verschil." },
+  "Lichte/onregelmatige roker — voorbereiding":  { emoji:"🌟", risk:"none", desc:"Je rookt niet elke dag, maar je wil wél stoppen binnen een maand. Je bent op de goede weg!" },
+  "Lichte/onregelmatige roker — overweger":      { emoji:"💭", risk:"none", desc:"Je rookt soms en denkt erover om te stoppen. Bewustzijn is de eerste stap!" },
+  "Lichte/onregelmatige roker — nog niet klaar": { emoji:"☁️", risk:"none", desc:"Je rookt af en toe en stoppen staat niet hoog op je lijstje. Als je wil, is er altijd hulp." },
+  "Ex-roker — hoog risico":                      { emoji:"⚠️", risk:"high", desc:"Je bent gestopt, maar het risico op terugval is nog redelijk groot. Zoek steun als het lastig wordt!" },
+  "Ex-roker — gemiddeld risico":                 { emoji:"👍", risk:"medium", desc:"Je bent al een tijdje gestopt — goed gedaan! Er is nog wat kans op terugval, maar je doet het prima." },
+  "Ex-roker — laag risico":                      { emoji:"🎉", risk:"low", desc:"Je bent al lang gestopt en denkt niet meer aan roken. Je bent een echt succesverhaal!" },
+  "Nooit-roker — hoog risico":                   { emoji:"🔴", risk:"high", desc:"Je hebt nog nooit gerookt, maar je overweegt het wél. Pas op — roken is snel verslavend. Praat erover!" },
+  "Nooit-roker — gemiddeld risico":              { emoji:"🟡", risk:"medium", desc:"Je hebt nooit gerookt en denkt er niet snel aan te beginnen. Goed zo — hou het zo!" },
+  "Nooit-roker — laag risico":                   { emoji:"✨", risk:"low", desc:"Je hebt nooit gerookt en denkt er absoluut niet aan. Geweldig — de beste keuze voor je gezondheid!" }
 };
 
-const riskLabels = {
-  high: "Hoog risico",
-  medium: "Gemiddeld risico",
-  low: "Laag risico",
-  none: ""
-};
-
+/* ════════════════════════════════════════════════════════════════
+   DECISION LOGIC
+   ════════════════════════════════════════════════════════════════ */
 function getLabel(ans) {
   const v = id => ans[id];
   if (v("v1") === 2) {
-    if (v("v3") === undefined) return null;
+    if (!v("v3")) return null;
     if ([1,2].includes(v("v3")))    return "Nooit-roker — hoog risico";
     if ([3,4,5].includes(v("v3"))) return "Nooit-roker — gemiddeld risico";
     if (v("v3") === 6)              return "Nooit-roker — laag risico";
@@ -521,25 +462,26 @@ function getLabel(ans) {
 
 function getFlow(ans) {
   const v = id => ans[id];
-  if (v("v1") === undefined) return ["v1"];
-  if (v("v1") === 2)         return ["v1", "v3"];
-  if (v("v2") === undefined) return ["v1", "v2"];
+  if (!v("v1")) return ["v1"];
+  if (v("v1") === 2) return ["v1","v3"];
+  if (!v("v2")) return ["v1","v2"];
   if (v("v2") === 1) {
-    if (v("v4") === undefined) return ["v1", "v2", "v4"];
-    if (v("v4") === 1)  return ["v1", "v2", "v4", "v5", "v6", "v10"];
-    if (v("v4") === 2)  return ["v1", "v2", "v4", "v7", "v9", "v10"];
+    if (!v("v4")) return ["v1","v2","v4"];
+    if (v("v4") === 1) return ["v1","v2","v4","v5","v6","v10"];
+    if (v("v4") === 2) return ["v1","v2","v4","v7","v9","v10"];
   }
   if ([2,3,4].includes(v("v2"))) {
-    if (v("v7") === undefined) return ["v1", "v2", "v7"];
-    if ([1,2].includes(v("v7"))) return ["v1", "v2", "v7", "v9", "v10"];
-    if (v("v7") === 3)           return ["v1", "v2", "v7", "v8", "v3"];
+    if (!v("v7")) return ["v1","v2","v7"];
+    if ([1,2].includes(v("v7"))) return ["v1","v2","v7","v9","v10"];
+    if (v("v7") === 3) return ["v1","v2","v7","v8","v3"];
   }
   return ["v1"];
 }
 
-let answers = {};
-let flowIds = ["v1"];
-let currentStep = 0;
+/* ════════════════════════════════════════════════════════════════
+   QUIZ STATE
+   ════════════════════════════════════════════════════════════════ */
+let answers = {}, flowIds = ["v1"], currentStep = 0;
 
 function updateProgress() {
   const pct = flowIds.length <= 1 ? 0 : (currentStep / flowIds.length * 100);
@@ -552,76 +494,190 @@ function render() {
   if (!qId) { showResult(); return; }
   const q = questions.find(x => x.id === qId);
   if (!q) { showResult(); return; }
-  const selected = answers[qId];
-  const total = flowIds.length;
-
+  const sel = answers[qId];
   area.innerHTML = `
-    <div class="step-counter">Vraag ${currentStep + 1} van ${Math.max(total, currentStep + 2)}</div>
+    <div class="step-counter">Vraag ${currentStep+1} van ${Math.max(flowIds.length, currentStep+2)}</div>
     <div class="question-card">
       <div class="question-text">${q.text}</div>
       <div class="options">
         ${q.options.map(o => `
-          <button class="opt-btn${selected === o.val ? " selected" : ""}"
-                  onclick="selectAnswer('${qId}', ${o.val})">
-            <span class="check">${selected === o.val ? "" : ""}</span>
-            ${o.label}
-          </button>
-        `).join("")}
+          <button class="opt-btn${sel===o.val?" selected":""}" onclick="selectAnswer('${qId}',${o.val})">
+            <span class="check"></span>${o.label}
+          </button>`).join("")}
       </div>
     </div>
     <div class="nav-row">
-      ${currentStep > 0 ? `<button class="btn-back" onclick="goBack()">← Terug</button>` : ""}
-      <button class="btn-next" ${selected === undefined ? "disabled" : ""} onclick="goNext()">
-        Volgende →
-      </button>
-    </div>
-  `;
+      ${currentStep>0 ? `<button class="btn-back" onclick="goBack()">← Terug</button>` : ""}
+      <button class="btn-next" ${sel===undefined?"disabled":""} onclick="goNext()">Volgende →</button>
+    </div>`;
   updateProgress();
 }
 
 function selectAnswer(qId, val) {
   answers[qId] = val;
-  const newFlow = getFlow(answers);
-  flowIds.forEach(id => { if (!newFlow.includes(id) && id !== qId) delete answers[id]; });
-  flowIds = newFlow;
+  const nf = getFlow(answers);
+  flowIds.forEach(id => { if (!nf.includes(id) && id !== qId) delete answers[id]; });
+  flowIds = nf;
   render();
 }
-
 function goNext() {
   if (answers[flowIds[currentStep]] === undefined) return;
   currentStep++;
-  if (currentStep >= flowIds.length) { showResult(); return; }
-  if (getLabel(answers)) { showResult(); return; }
+  if (currentStep >= flowIds.length || getLabel(answers)) { showResult(); return; }
   render();
 }
+function goBack() { if (currentStep > 0) { currentStep--; render(); } }
 
-function goBack() {
-  if (currentStep > 0) { currentStep--; render(); }
-}
-
-function showResult() {
+async function showResult() {
   document.getElementById("progress").style.width = "100%";
-  const label = getLabel(answers) || "Onbekend rookprofiel";
-  const r = results[label] || { emoji: "❓", risk: "none", desc: "Probeer de vragen opnieuw te beantwoorden." };
-  const riskClass = r.risk !== "none" ? `risk-${r.risk}` : "";
-  const riskText  = r.risk !== "none" ? riskLabels[r.risk] : "";
+  const label = getLabel(answers) || "Onbekend";
+  const r = resultData[label] || { emoji:"❓", risk:"none", desc:"Probeer opnieuw." };
+  const riskMap = { high:"Hoog risico", medium:"Gemiddeld risico", low:"Laag risico" };
 
   document.getElementById("quiz-area").innerHTML = `
     <div class="result-card">
       <span class="result-emoji">${r.emoji}</span>
-      <div class="result-tag">Jouw profiel</div><br>
-      ${riskClass ? `<span class="risk-badge ${riskClass}">${riskText}</span><br>` : ""}
+      <div class="result-tag">Jouw profiel</div>
+      ${r.risk!=="none" ? `<br><span class="risk-badge risk-${r.risk}">${riskMap[r.risk]}</span>` : ""}
       <div class="result-label">${label}</div>
       <div class="result-desc">${r.desc}</div>
-      <button class="btn-restart" onclick="restart()">↺ Opnieuw beginnen</button>
+      <div id="save-status" style="min-height:32px;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:13px;color:var(--text-muted)">Resultaat opslaan…</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn-restart" onclick="restart()">↺ Opnieuw</button>
+        <button class="btn-dashboard" onclick="showTab('dashboard')">📊 Dashboard</button>
+      </div>
+    </div>`;
+
+  const { ok, msg } = await saveResult(label);
+  const statusEl = document.getElementById("save-status");
+  if (statusEl) {
+    statusEl.innerHTML = ok
+      ? `<span class="saved-badge">✓ Opgeslagen in database</span>`
+      : `<span style="font-size:13px;color:var(--warning)">⚠️ ${msg || 'Opslaan mislukt'}</span>`;
+  }
+}
+
+function restart() { answers={}; flowIds=["v1"]; currentStep=0; render(); }
+
+/* ════════════════════════════════════════════════════════════════
+   DASHBOARD
+   ════════════════════════════════════════════════════════════════ */
+let chartAbs = null, chartPct = null;
+
+async function loadDashboard() {
+  document.getElementById("dash-content").innerHTML = `<div class="loading-msg">Gegevens ophalen uit database…</div>`;
+
+  if (!isConfigured()) {
+    document.getElementById("dash-content").innerHTML = `
+      <div class="error-msg">
+        <strong>Supabase nog niet ingesteld.</strong><br>
+        Vul <code>SUPABASE_URL</code> en <code>SUPABASE_ANON_KEY</code> in bovenaan het script.
+      </div>`;
+    return;
+  }
+
+  const counts = await loadCounts();
+  if (counts === null) {
+    document.getElementById("dash-content").innerHTML = `
+      <div class="error-msg">
+        <strong>Kan geen verbinding maken met de database.</strong><br>
+        Controleer je Supabase-URL, ANON key en de Row Level Security-instellingen.
+      </div>`;
+    return;
+  }
+
+  const total = ALL_LABELS.reduce((s,l) => s+(counts[l]||0), 0);
+  const values = ALL_LABELS.map(l => counts[l]||0);
+  const percents = values.map(v => total>0 ? Math.round(v/total*1000)/10 : 0);
+  const topIdx = values.indexOf(Math.max(...values));
+
+  if (total === 0) {
+    document.getElementById("dash-content").innerHTML =
+      `<div class="loading-msg" style="padding:4rem">Nog geen resultaten in de database.<br><br>Vul de quiz in om de eerste te zijn!</div>`;
+    return;
+  }
+
+  document.getElementById("dash-content").innerHTML = `
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Totaal ingevuld</div>
+        <div class="stat-value">${total}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Meest voorkomend</div>
+        <div class="stat-value-sm">${ALL_LABELS[topIdx]}<br>
+          <span style="color:var(--purple-mid);font-size:16px">${values[topIdx]}× (${percents[topIdx]}%)</span>
+        </div>
+      </div>
     </div>
-  `;
+    <div class="chart-card">
+      <div class="chart-title">Absolute aantallen per profiel</div>
+      <div class="chart-wrap"><canvas id="cAbs"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Verdeling in procenten (%)</div>
+      <div class="chart-wrap"><canvas id="cPct"></canvas></div>
+    </div>`;
+
+  const chartCfg = (data, suffix) => ({
+    type: 'bar',
+    data: {
+      labels: SHORT_LABELS,
+      datasets: [{
+        data,
+        backgroundColor: BAR_COLORS,
+        borderWidth: 0,
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: ctx => ALL_LABELS[ctx[0].dataIndex],
+            label: ctx => ` ${ctx.parsed.x}${suffix}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { color: 'rgba(127,119,221,0.1)' },
+          ticks: { color:'#6b6b8a', font:{family:"'Nunito Sans',sans-serif",size:12}, callback: v => v+suffix }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color:'#1a1a2e', font:{family:"'Nunito Sans',sans-serif",size:12} }
+        }
+      }
+    }
+  });
+
+  if (chartAbs) chartAbs.destroy();
+  if (chartPct) chartPct.destroy();
+  chartAbs = new Chart(document.getElementById("cAbs"), chartCfg(values, ''));
+  chartPct  = new Chart(document.getElementById("cPct"), chartCfg(percents, '%'));
 }
 
-function restart() {
-  answers = {}; flowIds = ["v1"]; currentStep = 0; render();
+/* ════════════════════════════════════════════════════════════════
+   TAB SWITCHING
+   ════════════════════════════════════════════════════════════════ */
+function showTab(tab) {
+  document.getElementById("quiz-view").style.display = tab==='quiz' ? 'block' : 'none';
+  document.getElementById("dashboard").style.display = tab==='dashboard' ? 'block' : 'none';
+  document.getElementById("tab-quiz").classList.toggle("active", tab==='quiz');
+  document.getElementById("tab-dash").classList.toggle("active", tab==='dashboard');
+  if (tab==='dashboard') loadDashboard();
 }
 
+/* ── INIT ── */
 render();
 </script>
 </body>
