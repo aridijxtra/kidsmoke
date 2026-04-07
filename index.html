@@ -241,24 +241,7 @@
 <div id="app">
 
   <!-- ══ CONFIGURATION BANNER (remove after setup) ══ -->
-  <div id="config-banner">
-    <strong>⚙️ Eenmalige Supabase-instelling nodig</strong><br>
-    Pas de twee regels bovenaan het &lt;script&gt; aan met jouw eigen gegevens:
-    <ol>
-      <li>Maak een gratis account op <strong>supabase.com</strong></li>
-      <li>Maak een nieuw project aan (kies een regio dicht bij Nederland)</li>
-      <li>Ga naar <strong>Project Settings → API</strong> en kopieer:<br>
-        – <code>Project URL</code> → plak in <code>SUPABASE_URL</code><br>
-        – <code>anon public key</code> → plak in <code>SUPABASE_ANON_KEY</code>
-      </li>
-      <li>Ga naar <strong>SQL Editor</strong> en voer dit SQL-commando uit:<br>
-        <code>CREATE TABLE results (id bigint generated always as identity primary key, label text not null, created_at timestamptz default now());</code>
-      </li>
-      <li>Ga naar <strong>Authentication → Policies</strong>, klik op de tabel <code>results</code> en schakel <strong>Row Level Security</strong> uit (of voeg een INSERT + SELECT policy toe voor <code>anon</code>).</li>
-      <li>Verwijder dit gele blok uit de HTML als alles werkt.</li>
-    </ol>
-  </div>
-
+  
   <!-- ══ TABS ══ -->
   <div class="tab-bar">
     <button class="tab-btn active" id="tab-quiz" onclick="showTab('quiz')">📋 Quiz</button>
