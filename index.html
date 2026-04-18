@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tabakroken, wat doe jij?</title>
+  <title>Rook jij? Doe de check!</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Nunito+Sans:wght@400;600&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -241,7 +241,24 @@
 <div id="app">
 
   <!-- ══ CONFIGURATION BANNER (remove after setup) ══ -->
-  
+  <div id="config-banner">
+    <strong>⚙️ Eenmalige Supabase-instelling nodig</strong><br>
+    Pas de twee regels bovenaan het &lt;script&gt; aan met jouw eigen gegevens:
+    <ol>
+      <li>Maak een gratis account op <strong>supabase.com</strong></li>
+      <li>Maak een nieuw project aan (kies een regio dicht bij Nederland)</li>
+      <li>Ga naar <strong>Project Settings → API</strong> en kopieer:<br>
+        – <code>Project URL</code> → plak in <code>SUPABASE_URL</code><br>
+        – <code>anon public key</code> → plak in <code>SUPABASE_ANON_KEY</code>
+      </li>
+      <li>Ga naar <strong>SQL Editor</strong> en voer dit SQL-commando uit:<br>
+        <code>CREATE TABLE results (id bigint generated always as identity primary key, label text not null, created_at timestamptz default now());</code>
+      </li>
+      <li>Ga naar <strong>Authentication → Policies</strong>, klik op de tabel <code>results</code> en schakel <strong>Row Level Security</strong> uit (of voeg een INSERT + SELECT policy toe voor <code>anon</code>).</li>
+      <li>Verwijder dit gele blok uit de HTML als alles werkt.</li>
+    </ol>
+  </div>
+
   <!-- ══ TABS ══ -->
   <div class="tab-bar">
     <button class="tab-btn active" id="tab-quiz" onclick="showTab('quiz')">📋 Quiz</button>
@@ -260,7 +277,7 @@
           <line x1="14" y1="1" x2="14" y2="4"/>
         </svg>
       </div>
-      <h1>Tabakroken, wat doe jij?</h1>
+      <h1>Rook jij? Doe de check!</h1>
     </div>
     <p class="subtitle">Beantwoord een paar vragen en ontdek jouw rookprofiel.</p>
     <div class="progress-wrap"><div class="progress-fill" id="progress"></div></div>
@@ -283,8 +300,8 @@
 /* ════════════════════════════════════════════════════════════════
    STAP 1: VUL HIER JOUW SUPABASE-GEGEVENS IN
    ════════════════════════════════════════════════════════════════ */
-const SUPABASE_URL      = 'https://yuxvaherzycemkbywfvs.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_3OZgU15n0q-j8Z4jFMJ1JA_tgUzCa4-';
+const SUPABASE_URL      = 'JOUW_SUPABASE_URL_HIER';        // bv. https://xyzxyz.supabase.co
+const SUPABASE_ANON_KEY = 'JOUW_SUPABASE_ANON_KEY_HIER';   // begint met eyJ...
 
 /* ════════════════════════════════════════════════════════════════
    SUPABASE CLIENT
@@ -330,18 +347,18 @@ async function loadCounts() {
    DATA
    ════════════════════════════════════════════════════════════════ */
 const ALL_LABELS = [
-  "Dagelijkse roker — bereid om te stoppen",
-  "Dagelijkse roker — overweegt stoppen",
-  "Dagelijkse roker — ongemotiveerd om te stoppen",
-  "Lichte/onregelmatige roker — bereid om te stoppen",
-  "Lichte/onregelmatige roker — overweegt stoppen",
-  "Lichte/onregelmatige roker — ongemotiveerd om te stoppen",
-  "Ex-roker — hoog risico op terugval",
-  "Ex-roker — gemiddeld risico op terugval",
-  "Ex-roker — laag risico op terugval",
-  "Nooit-roker — hoog risico op beginnen",
-  "Nooit-roker — gemiddeld op beginnen",
-  "Nooit-roker — laag risico op beginnen"
+  "Dagelijkse roker — voorbereiding",
+  "Dagelijkse roker — overweger",
+  "Dagelijkse roker — nog niet klaar",
+  "Lichte/onregelmatige roker — voorbereiding",
+  "Lichte/onregelmatige roker — overweger",
+  "Lichte/onregelmatige roker — nog niet klaar",
+  "Ex-roker — hoog risico",
+  "Ex-roker — gemiddeld risico",
+  "Ex-roker — laag risico",
+  "Nooit-roker — hoog risico",
+  "Nooit-roker — gemiddeld risico",
+  "Nooit-roker — laag risico"
 ];
 const SHORT_LABELS = [
   "Dagelijks — voorbereiding",
@@ -388,18 +405,18 @@ const questions = [
 ];
 
 const resultData = {
-  "Dagelijkse roker — bereid om te stoppen":            { emoji:"💪", risk:"none", desc:"Je rookt elke dag en je bent klaar om binnen een maand te stoppen. Dat is een grote stap!" },
-  "Dagelijkse roker — overweegt om te stoppen":                { emoji:"🤔", risk:"none", desc:"Je rookt elke dag en denkt erover na om te stoppen. Nadenken is al een begin!" },
-  "Dagelijkse roker — ongemotiveerd om te stoppen":           { emoji:"🚬", risk:"none", desc:"Je rookt elke dag en stoppen staat nog niet op je radar. Zelfs kleine stapjes maken al een verschil." },
-  "Lichte/onregelmatige roker — bereid om te stoppen":  { emoji:"🌟", risk:"none", desc:"Je rookt niet elke dag, maar je wil wél stoppen binnen een maand. Je bent op de goede weg!" },
-  "Lichte/onregelmatige roker — overweegt om te stoppen":      { emoji:"💭", risk:"none", desc:"Je rookt soms en denkt erover om te stoppen. Bewustzijn is de eerste stap!" },
-  "Lichte/onregelmatige roker — ongemotiveerd om te stoppen": { emoji:"☁️", risk:"none", desc:"Je rookt af en toe en stoppen staat niet hoog op je lijstje. Als je wil, is er altijd hulp." },
-  "Ex-roker — hoog risico op terugval":                      { emoji:"⚠️", risk:"high", desc:"Je bent gestopt, maar het risico op terugval is nog redelijk groot. Zoek steun als het lastig wordt!" },
-  "Ex-roker — gemiddeld risico op terugval":                 { emoji:"👍", risk:"medium", desc:"Je bent al een tijdje gestopt — goed gedaan! Er is nog wat kans op terugval, maar je doet het prima." },
-  "Ex-roker — laag risico op terugval":                      { emoji:"🎉", risk:"low", desc:"Je bent al lang gestopt en denkt niet meer aan roken. Je bent een echt succesverhaal!" },
-  "Nooit-roker — hoog risico op beginnen met roken":                   { emoji:"🔴", risk:"high", desc:"Je hebt nog nooit gerookt, maar je overweegt het wél. Pas op — roken is snel verslavend. Praat erover!" },
-  "Nooit-roker — gemiddeld risico op beginnen met roken":              { emoji:"🟡", risk:"medium", desc:"Je hebt nooit gerookt en denkt er niet snel aan te beginnen. Goed zo — hou het zo!" },
-  "Nooit-roker — laag risico op beginnen met roken":                   { emoji:"✨", risk:"low", desc:"Je hebt nooit gerookt en denkt er absoluut niet aan. Geweldig — de beste keuze voor je gezondheid!" }
+  "Dagelijkse roker — voorbereiding":            { emoji:"💪", risk:"none", desc:"Je rookt elke dag en je bent klaar om binnen een maand te stoppen. Dat is een grote stap!" },
+  "Dagelijkse roker — overweger":                { emoji:"🤔", risk:"none", desc:"Je rookt elke dag en denkt erover na om te stoppen. Nadenken is al een begin!" },
+  "Dagelijkse roker — nog niet klaar":           { emoji:"🚬", risk:"none", desc:"Je rookt elke dag en stoppen staat nog niet op je radar. Zelfs kleine stapjes maken al een verschil." },
+  "Lichte/onregelmatige roker — voorbereiding":  { emoji:"🌟", risk:"none", desc:"Je rookt niet elke dag, maar je wil wél stoppen binnen een maand. Je bent op de goede weg!" },
+  "Lichte/onregelmatige roker — overweger":      { emoji:"💭", risk:"none", desc:"Je rookt soms en denkt erover om te stoppen. Bewustzijn is de eerste stap!" },
+  "Lichte/onregelmatige roker — nog niet klaar": { emoji:"☁️", risk:"none", desc:"Je rookt af en toe en stoppen staat niet hoog op je lijstje. Als je wil, is er altijd hulp." },
+  "Ex-roker — hoog risico":                      { emoji:"⚠️", risk:"high", desc:"Je bent gestopt, maar het risico op terugval is nog redelijk groot. Zoek steun als het lastig wordt!" },
+  "Ex-roker — gemiddeld risico":                 { emoji:"👍", risk:"medium", desc:"Je bent al een tijdje gestopt — goed gedaan! Er is nog wat kans op terugval, maar je doet het prima." },
+  "Ex-roker — laag risico":                      { emoji:"🎉", risk:"low", desc:"Je bent al lang gestopt en denkt niet meer aan roken. Je bent een echt succesverhaal!" },
+  "Nooit-roker — hoog risico":                   { emoji:"🔴", risk:"high", desc:"Je hebt nog nooit gerookt, maar je overweegt het wél. Pas op — roken is snel verslavend. Praat erover!" },
+  "Nooit-roker — gemiddeld risico":              { emoji:"🟡", risk:"medium", desc:"Je hebt nooit gerookt en denkt er niet snel aan te beginnen. Goed zo — hou het zo!" },
+  "Nooit-roker — laag risico":                   { emoji:"✨", risk:"low", desc:"Je hebt nooit gerookt en denkt er absoluut niet aan. Geweldig — de beste keuze voor je gezondheid!" }
 };
 
 /* ════════════════════════════════════════════════════════════════
@@ -409,34 +426,34 @@ function getLabel(ans) {
   const v = id => ans[id];
   if (v("v1") === 2) {
     if (!v("v3")) return null;
-    if ([1,2].includes(v("v3")))    return "Nooit-roker — hoog risico op beginnen met roken";
-    if ([3,4,5].includes(v("v3"))) return "Nooit-roker — gemiddeld risico op beginnen met roken";
-    if (v("v3") === 6)              return "Nooit-roker — laag risico op beginnen met roken";
+    if ([1,2].includes(v("v3")))    return "Nooit-roker — hoog risico";
+    if ([3,4,5].includes(v("v3"))) return "Nooit-roker — gemiddeld risico";
+    if (v("v3") === 6)              return "Nooit-roker — laag risico";
     return null;
   }
   if (v("v1") === 1) {
     if (v("v2") === 1) {
       if (v("v4") === 1) {
-        if (v("v10") === 1)              return "Dagelijkse roker — bereid om te stoppen";
-        if ([2,3,4].includes(v("v10"))) return "Dagelijkse roker — overweegt om te stoppen";
-        if ([5,6,7].includes(v("v10"))) return "Dagelijkse roker — ongemotiveerd";
+        if (v("v10") === 1)              return "Dagelijkse roker — voorbereiding";
+        if ([2,3,4].includes(v("v10"))) return "Dagelijkse roker — overweger";
+        if ([5,6,7].includes(v("v10"))) return "Dagelijkse roker — nog niet klaar";
       }
       if (v("v4") === 2) {
-        if (v("v10") === 1)              return "Lichte/onregelmatige roker — bereid om te stoppen";
-        if ([2,3,4].includes(v("v10"))) return "Lichte/onregelmatige roker — overweegt om te stoppen";
-        if ([5,6,7].includes(v("v10"))) return "Lichte/onregelmatige roker — ongemotiveerd om te stoppen";
+        if (v("v10") === 1)              return "Lichte/onregelmatige roker — voorbereiding";
+        if ([2,3,4].includes(v("v10"))) return "Lichte/onregelmatige roker — overweger";
+        if ([5,6,7].includes(v("v10"))) return "Lichte/onregelmatige roker — nog niet klaar";
       }
     }
     if ([2,3,4].includes(v("v2"))) {
       if ([1,2].includes(v("v7"))) {
-        if (v("v10") === 1)              return "Lichte/onregelmatige roker — bereid om te stoppen";
-        if ([2,3,4].includes(v("v10"))) return "Lichte/onregelmatige roker — overweegt om te stoppen";
-        if ([5,6,7].includes(v("v10"))) return "Lichte/onregelmatige roker — ongemotiveerd om te stoppen";
+        if (v("v10") === 1)              return "Lichte/onregelmatige roker — voorbereiding";
+        if ([2,3,4].includes(v("v10"))) return "Lichte/onregelmatige roker — overweger";
+        if ([5,6,7].includes(v("v10"))) return "Lichte/onregelmatige roker — nog niet klaar";
       }
       if (v("v7") === 3) {
-        if ([1,2].includes(v("v3")))   return "Ex-roker — hoog risico op terugval";
-        if ([3,4,5].includes(v("v3"))) return "Ex-roker — gemiddeld risico op terugval";
-        if (v("v3") === 6)             return "Ex-roker — laag risico op terugval";
+        if ([1,2].includes(v("v3")))   return "Ex-roker — hoog risico";
+        if ([3,4,5].includes(v("v3"))) return "Ex-roker — gemiddeld risico";
+        if (v("v3") === 6)             return "Ex-roker — laag risico";
       }
     }
   }
