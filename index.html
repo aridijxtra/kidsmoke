@@ -402,6 +402,26 @@ const resultData = {
 };
 
 /* ════════════════════════════════════════════════════════════════
+   STAP 2: PAS HIER DE ZICHTBARE PROFIELNAMEN AAN
+   De sleutels links NOOIT wijzigen (die gaan naar de database).
+   Verander alleen de tekst rechts — dat is wat de gebruiker ziet.
+   ════════════════════════════════════════════════════════════════ */
+const displayLabels = {
+  "Dagelijkse roker — voorbereiding":            "Dagelijkse roker — voorbereiding",
+  "Dagelijkse roker — overweger":                "Dagelijkse roker — overweger",
+  "Dagelijkse roker — nog niet klaar":           "Dagelijkse roker — nog niet klaar",
+  "Lichte/onregelmatige roker — voorbereiding":  "Lichte/onregelmatige roker — voorbereiding",
+  "Lichte/onregelmatige roker — overweger":      "Lichte/onregelmatige roker — overweger",
+  "Lichte/onregelmatige roker — nog niet klaar": "Lichte/onregelmatige roker — nog niet klaar",
+  "Ex-roker — hoog risico":                      "Ex-roker — hoog risico",
+  "Ex-roker — gemiddeld risico":                 "Ex-roker — gemiddeld risico",
+  "Ex-roker — laag risico":                      "Ex-roker — laag risico",
+  "Nooit-roker — hoog risico":                   "Nooit-roker — hoog risico",
+  "Nooit-roker — gemiddeld risico":              "Nooit-roker — gemiddeld risico",
+  "Nooit-roker — laag risico":                   "Nooit-roker — laag risico"
+};
+
+/* ════════════════════════════════════════════════════════════════
    DECISION LOGIC
    ════════════════════════════════════════════════════════════════ */
 function getLabel(ans) {
@@ -521,7 +541,7 @@ async function showResult() {
       <span class="result-emoji">${r.emoji}</span>
       <div class="result-tag">Jouw profiel</div>
       ${r.risk!=="none" ? `<br><span class="risk-badge risk-${r.risk}">${riskMap[r.risk]}</span>` : ""}
-      <div class="result-label">${label}</div>
+      <div class="result-label">${displayLabels[label] || label}</div>
       <div class="result-desc">${r.desc}</div>
       <div id="save-status" style="min-height:32px;display:flex;align-items:center;justify-content:center;">
         <span style="font-size:13px;color:var(--text-muted)">Resultaat opslaan…</span>
