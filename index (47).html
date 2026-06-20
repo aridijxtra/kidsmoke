@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tobacco Smoking, What's Your Story?</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Nunito+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    /* ── TOKENS ── */
+    :root {
+      --purple-light: #EEEDFE;
+      --purple-mid:   #7F77DD;
+      --purple-dark:  #534AB7;
+      --purple-deep:  #3C3489;
+      --bg:           #F7F6FF;
+      --card-bg:      #FFFFFF;
+      --text:         #1a1a2e;
+      --text-muted:   #6b6b8a;
+      --border:       #e0dff7;
+      --success:      #1D9E75;
+      --warning:      #BA7517;
+      --danger:       #A32D2D;
+      --radius:       16px;
+      --radius-sm:    10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Nunito Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 4rem;
+    }
+    body::before, body::after {
+      content: ''; position: fixed; border-radius: 50%;
+      opacity: 0.15; pointer-events: none; z-index: 0;
+    }
+    body::before {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, #7F77DD, transparent 70%);
+      top: -150px; left: -150px;
+    }
+    body::after {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, #5DCAA5, transparent 70%);
+      bottom: -100px; right: -100px;
+    }
+    #app { position: relative; z-index: 1; width: 100%; max-width: 680px; }
+
+    /* ── CONFIG BANNER ── */
+    #config-banner {
+      background: #FAEEDA; border: 1.5px solid #EF9F27;
+      border-radius: var(--radius); padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem; font-size: 14px; line-height: 1.7;
+      color: #633806;
+    }
+    #config-banner strong { font-weight: 800; }
+    #config-banner code {
+      background: rgba(0,0,0,0.08); padding: 2px 6px;
+      border-radius: 4px; font-family: monospace; font-size: 13px;
+    }
+    #config-banner ol { padding-left: 1.25rem; margin-top: 8px; }
+    #config-banner li { margin-bottom: 4px; }
+
+    /* ── TABS ── */
+    .tab-bar {
+      display: flex; gap: 8px; margin-bottom: 1.5rem;
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 6px;
+    }
+    .tab-btn {
+      flex: 1; padding: 10px 16px; border-radius: var(--radius-sm);
+      border: none; background: transparent; color: var(--text-muted);
+      font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .tab-btn.active { background: var(--purple-mid); color: #fff; box-shadow: 0 2px 10px rgba(127,119,221,0.3); }
+    .tab-btn:not(.active):hover { background: var(--purple-light); color: var(--purple-deep); }
+
+    /* ── HEADER ── */
+    .header { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+    .header-icon {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: var(--purple-mid); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(127,119,221,0.35);
+    }
+    h1 { font-family: 'Nunito', sans-serif; font-size: 26px; font-weight: 800; color: var(--text); line-height: 1.2; }
+    .subtitle { font-size: 15px; color: var(--text-muted); margin-bottom: 1.75rem; padding-left: 62px; }
+
+    /* ── PROGRESS ── */
+    .progress-wrap { background: var(--border); border-radius: 99px; height: 8px; margin-bottom: 1.75rem; overflow: hidden; }
+    .progress-fill {
+      height: 8px; border-radius: 99px;
+      background: linear-gradient(90deg, var(--purple-mid), #5DCAA5);
+      transition: width 0.45s cubic-bezier(.4,0,.2,1); width: 0%;
+    }
+    .step-counter { font-size: 12px; font-weight: 600; color: var(--purple-mid); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+
+    /* ── QUESTION CARD ── */
+    .question-card {
+      background: var(--card-bg); border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 1.75rem; margin-bottom: 1.25rem;
+      box-shadow: 0 2px 16px rgba(127,119,221,0.08);
+      animation: slideIn 0.3s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes slideIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+    .question-text { font-family: 'Nunito', sans-serif; font-size: 19px; font-weight: 700; line-height: 1.45; margin-bottom: 1.4rem; }
+
+    /* ── OPTIONS ── */
+    .options { display: flex; flex-direction: column; gap: 10px; }
+    .opt-btn {
+      padding: 13px 18px; border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border); background: #fafafe;
+      color: var(--text); font-family: 'Nunito Sans', sans-serif;
+      font-size: 15px; font-weight: 600; cursor: pointer; text-align: left;
+      transition: all 0.15s; display: flex; align-items: center; gap: 10px;
+    }
+    .opt-btn .check {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid var(--border); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .opt-btn:hover { border-color: var(--purple-mid); background: var(--purple-light); color: var(--purple-deep); transform: translateX(3px); }
+    .opt-btn:hover .check { border-color: var(--purple-mid); }
+    .opt-btn.selected { border-color: var(--purple-mid); background: var(--purple-light); color: var(--purple-deep); }
+    .opt-btn.selected .check { background: var(--purple-mid); border-color: var(--purple-mid); }
+    .opt-btn.selected .check::after { content:''; width:7px; height:7px; border-radius:50%; background:white; display:block; }
+
+    /* ── NAV ── */
+    .nav-row { display: flex; gap: 10px; }
+    .btn-back {
+      padding: 13px 20px; border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border); background: transparent;
+      color: var(--text-muted); font-family: 'Nunito', sans-serif;
+      font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.15s;
+    }
+    .btn-back:hover { background: var(--border); }
+    .btn-next {
+      flex: 1; padding: 13px 24px; border-radius: var(--radius-sm);
+      border: none; background: var(--purple-mid); color: #fff;
+      font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800;
+      cursor: pointer; transition: all 0.15s;
+      box-shadow: 0 3px 12px rgba(127,119,221,0.3);
+    }
+    .btn-next:hover:not(:disabled) { background: var(--purple-dark); transform: translateY(-1px); }
+    .btn-next:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; box-shadow: none; }
+
+    /* ── RESULT ── */
+    .result-card {
+      background: var(--card-bg); border: 2px solid var(--purple-mid);
+      border-radius: var(--radius); padding: 2.5rem 2rem; text-align: center;
+      box-shadow: 0 6px 32px rgba(127,119,221,0.15);
+      animation: popIn 0.4s cubic-bezier(.175,.885,.32,1.275);
+    }
+    @keyframes popIn { from { opacity:0; transform:scale(0.92); } to { opacity:1; transform:scale(1); } }
+    .result-emoji { font-size: 56px; display: block; margin-bottom: 1rem; }
+    .result-tag {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--purple-dark); background: var(--purple-light);
+      padding: 4px 14px; border-radius: 99px; margin-bottom: 14px;
+    }
+    .result-label { font-family: 'Nunito', sans-serif; font-size: 30px; font-weight: 800; color: var(--purple-deep); margin-bottom: 1rem; line-height: 1.25; }
+    .result-desc { font-size: 15px; color: var(--text-muted); line-height: 1.75; margin-bottom: 1.5rem; max-width: 420px; margin-left: auto; margin-right: auto; }
+    .risk-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; padding: 6px 16px; border-radius: 99px; margin-bottom: 1.25rem; }
+    .risk-high   { background: #FCEBEB; color: var(--danger); }
+    .risk-medium { background: #FAEEDA; color: var(--warning); }
+    .risk-low    { background: #EAF3DE; color: var(--success); }
+    .saved-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--success); background: #EAF3DE; padding: 6px 16px; border-radius: 99px; }
+    .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 1.25rem; }
+    .btn-restart {
+      padding: 13px 28px; border-radius: var(--radius-sm);
+      border: 2px solid var(--purple-mid); background: transparent;
+      color: var(--purple-dark); font-family: 'Nunito', sans-serif;
+      font-size: 15px; font-weight: 800; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-restart:hover { background: var(--purple-light); }
+    .btn-dashboard {
+      padding: 13px 28px; border-radius: var(--radius-sm);
+      border: none; background: var(--purple-mid); color: #fff;
+      font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800;
+      cursor: pointer; transition: all 0.15s;
+      box-shadow: 0 3px 12px rgba(127,119,221,0.3);
+    }
+    .btn-dashboard:hover { background: var(--purple-dark); }
+
+    /* ── DASHBOARD ── */
+    #dashboard { display: none; }
+    .dash-header { margin-bottom: 1.25rem; }
+    .dash-header h2 { font-family: 'Nunito', sans-serif; font-size: 22px; font-weight: 800; }
+    .dash-header p { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+    .stats-row { display: flex; gap: 12px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .stat-card {
+      flex: 1; min-width: 140px;
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 1rem 1.25rem;
+    }
+    .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .stat-value { font-family: 'Nunito', sans-serif; font-size: 28px; font-weight: 800; color: var(--purple-deep); }
+    .stat-value-sm { font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; color: var(--purple-deep); padding-top: 4px; line-height: 1.5; }
+    .chart-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem;
+      box-shadow: 0 2px 12px rgba(127,119,221,0.07);
+    }
+    .chart-title { font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 800; margin-bottom: 1.25rem; }
+    .chart-wrap { position: relative; height: 370px; }
+    .loading-msg { text-align: center; padding: 3rem; color: var(--text-muted); font-size: 15px; }
+    .btn-refresh {
+      padding: 9px 18px; border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border); background: transparent;
+      color: var(--text-muted); font-family: 'Nunito', sans-serif;
+      font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+      margin-bottom: 1rem;
+    }
+    .btn-refresh:hover { background: var(--purple-light); border-color: var(--purple-mid); color: var(--purple-deep); }
+    .error-msg {
+      background: #FCEBEB; border: 1px solid #F09595;
+      border-radius: var(--radius-sm); padding: 1rem 1.25rem;
+      font-size: 14px; color: var(--danger); line-height: 1.6;
+    }
+
+    @media (max-width: 480px) {
+      h1 { font-size: 21px; }
+      .subtitle { padding-left: 0; margin-top: 6px; }
+      .question-text { font-size: 17px; }
+      .result-label { font-size: 24px; }
+      .chart-wrap { height: 480px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+ 
+  <!-- ══ TABS ══ -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-quiz" onclick="showTab('quiz')">📋 Quiz</button>
+    <button class="tab-btn" id="tab-dash" onclick="showTab('dashboard')">📊 Dashboard</button>
+  </div>
+
+  <!-- ══ QUIZ VIEW ══ -->
+  <div id="quiz-view">
+    <div class="header">
+      <div class="header-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+          <line x1="6" y1="1" x2="6" y2="4"/>
+          <line x1="10" y1="1" x2="10" y2="4"/>
+          <line x1="14" y1="1" x2="14" y2="4"/>
+        </svg>
+      </div>
+      <h1>Tobacco Smoking, What's Your Story?</h1>
+    </div>
+    <p class="subtitle">Answer a few questions and discover your smoking profile.</p>
+    <div class="progress-wrap"><div class="progress-fill" id="progress"></div></div>
+    <div id="quiz-area"></div>
+  </div>
+
+  <!-- ══ DASHBOARD VIEW ══ -->
+  <div id="dashboard">
+    <div class="dash-header">
+      <h2>📊 Results Dashboard</h2>
+      <p>All submitted profiles from all users</p>
+    </div>
+    <button class="btn-refresh" onclick="loadDashboard()">↺ Refresh</button>
+    <div id="dash-content"><div class="loading-msg">Loading data…</div></div>
+  </div>
+
+</div><!-- #app -->
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   STEP 1: FILL IN YOUR SUPABASE DETAILS HERE
+   ════════════════════════════════════════════════════════════════ */
+const SUPABASE_URL      = 'https://yuxvaherzycemkbywfvs.supabase.co';        // e.g. https://xyzxyz.supabase.co
+const SUPABASE_ANON_KEY = 'sb_publishable_3OZgU15n0q-j8Z4jFMJ1JA_tgUzCa4-';   // starts with eyJ...
+
+/* ════════════════════════════════════════════════════════════════
+   SUPABASE CLIENT
+   ════════════════════════════════════════════════════════════════ */
+let db = null;
+function getDB() {
+  if (!db) db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return db;
+}
+function isConfigured() {
+  return SUPABASE_URL !== 'JOUW_SUPABASE_URL_HIER' && SUPABASE_ANON_KEY !== 'JOUW_SUPABASE_ANON_KEY_HIER';
+}
+
+/* ── Save a result row ── */
+async function saveResult(label) {
+  if (!isConfigured()) return { ok: false, msg: 'Supabase not yet configured.' };
+  try {
+    const { error } = await getDB().from('results').insert({ label });
+    if (error) throw error;
+    return { ok: true };
+  } catch(e) {
+    console.error('saveResult:', e);
+    return { ok: false, msg: e.message };
+  }
+}
+
+/* ── Load aggregated counts ── */
+async function loadCounts() {
+  if (!isConfigured()) return null;
+  try {
+    const { data, error } = await getDB().from('results').select('label');
+    if (error) throw error;
+    const counts = {};
+    (data || []).forEach(row => { counts[row.label] = (counts[row.label] || 0) + 1; });
+    return counts;
+  } catch(e) {
+    console.error('loadCounts:', e);
+    return null;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DATA
+   ════════════════════════════════════════════════════════════════ */
+const ALL_LABELS = [
+  "Dagelijkse roker — voorbereiding",
+  "Dagelijkse roker — overweger",
+  "Dagelijkse roker — nog niet klaar",
+  "Lichte/onregelmatige roker — voorbereiding",
+  "Lichte/onregelmatige roker — overweger",
+  "Lichte/onregelmatige roker — nog niet klaar",
+  "Ex-roker — hoog risico",
+  "Ex-roker — gemiddeld risico",
+  "Ex-roker — laag risico",
+  "Nooit-roker — hoog risico",
+  "Nooit-roker — gemiddeld risico",
+  "Nooit-roker — laag risico"
+];
+const SHORT_LABELS = [
+  "Daily—preparing",
+  "Daily—considering",
+  "Daily—unmotivated",
+  "Light—preparing",
+  "Light—considering",
+  "Light—unmotivated",
+  "Ex—high risk",
+  "Ex—medium risk",
+  "Ex—low risk",
+  "Never—high risk",
+  "Never—medium risk",
+  "Never—low risk"
+];
+const BAR_COLORS = [
+  "#E24B4A","#F09595","#F7C1C1",
+  "#EF9F27","#FAC775","#FAEEDA",
+  "#7F77DD","#AFA9EC","#CECBF6",
+  "#1D9E75","#5DCAA5","#9FE1CB"
+];
+
+const questions = [
+  { id:"v1", text:"Have you ever smoked, even if it was just 1 cigarette?",
+    options:[{label:"Yes",val:1},{label:"No",val:2}] },
+  { id:"v2", text:"How long ago did you last smoke?",
+    options:[{label:"Less than a week ago",val:1},{label:"More than 1 week, less than 2 months",val:2},{label:"More than 2 months, less than 6 months",val:3},{label:"More than 6 months ago",val:4}] },
+  { id:"v3", text:"Do you think you will ever smoke a cigarette in the future?",
+    options:[{label:"Yes, within 1 month",val:1},{label:"Yes, within 1 year",val:2},{label:"Yes, within 5 years",val:3},{label:"Yes, within 10 years",val:4},{label:"Maybe someday",val:5},{label:"Never again",val:6}] },
+  { id:"v4", text:"Have you smoked 1 or more cigarettes every day in the past 7 days?",
+    options:[{label:"Yes",val:1},{label:"No",val:2}] },
+  { id:"v5", text:"How many cigarettes do you smoke per day?",
+    options:[{label:"1–5 cigarettes",val:1},{label:"6–10 cigarettes",val:2},{label:"11–20 cigarettes",val:3},{label:"More than 20 cigarettes",val:4}] },
+  { id:"v6", text:"How long have you been smoking (every day)?",
+    options:[{label:"Less than 1 year",val:1},{label:"1 to 5 years",val:2},{label:"More than 5 years",val:3}] },
+  { id:"v7", text:"How often do you smoke?",
+    options:[{label:"Every week",val:1},{label:"Every month",val:2},{label:"I've quit",val:3}] },
+  { id:"v8", text:"How long have you already quit?",
+    options:[{label:"Less than 1 month",val:1},{label:"1 to 6 months",val:2},{label:"More than 6 months",val:3}] },
+  { id:"v9", text:"How many cigarettes do you smoke per month?",
+    options:[{label:"Less than 5",val:1},{label:"5 to 10",val:2},{label:"More than 10",val:3}] },
+  { id:"v10", text:"Which quitting plan suits you best?",
+    options:[{label:"I want to quit within 1 month",val:1},{label:"I want to quit within 1 year",val:2},{label:"I want to quit within 5 years",val:3},{label:"I want to quit within 10 years",val:4},{label:"I want to smoke less/lighter",val:5},{label:"I want to quit someday",val:6},{label:"I never want to quit",val:7}] }
+];
+
+const resultData = {
+  "Dagelijkse roker — voorbereiding":            { emoji:"💪", risk:"none", desc:"You smoke every day and you're ready to quit within a month. That's a big step!" },
+  "Dagelijkse roker — overweger":                { emoji:"🤔", risk:"none", desc:"You smoke every day and are thinking about quitting. Thinking about it is already a start!" },
+  "Dagelijkse roker — nog niet klaar":           { emoji:"🚬", risk:"none", desc:"You smoke every day and quitting isn't on your radar yet. Even small steps make a difference." },
+  "Lichte/onregelmatige roker — voorbereiding":  { emoji:"🌟", risk:"none", desc:"You don't smoke every day, but you do want to quit within a month. You're on the right track!" },
+  "Lichte/onregelmatige roker — overweger":      { emoji:"💭", risk:"none", desc:"You smoke occasionally and are thinking about quitting. Awareness is the first step!" },
+  "Lichte/onregelmatige roker — nog niet klaar": { emoji:"☁️", risk:"none", desc:"You smoke occasionally and quitting isn't high on your list. Help is always available if you want it." },
+  "Ex-roker — hoog risico":                      { emoji:"⚠️", risk:"high", desc:"You've quit, but the risk of relapse is still fairly high. Seek support if it gets difficult!" },
+  "Ex-roker — gemiddeld risico":                 { emoji:"👍", risk:"medium", desc:"You've been smoke-free for a while now — well done! There's still some chance of relapse, but you're doing great." },
+  "Ex-roker — laag risico":                      { emoji:"🎉", risk:"low", desc:"You've been smoke-free for a long time and no longer think about smoking. You're a real success story!" },
+  "Nooit-roker — hoog risico":                   { emoji:"🔴", risk:"high", desc:"You've never smoked, but you are considering it. Be careful — smoking becomes addictive quickly. Talk to someone about it!" },
+  "Nooit-roker — gemiddeld risico":              { emoji:"🟡", risk:"medium", desc:"You've never smoked and don't expect to start anytime soon. Good — keep it that way!" },
+  "Nooit-roker — laag risico":                   { emoji:"✨", risk:"low", desc:"You've never smoked and have absolutely no intention to. Great — the best choice for your health!" }
+};
+
+/* ════════════════════════════════════════════════════════════════
+   STEP 2: ADJUST THE VISIBLE PROFILE NAMES HERE
+   NEVER change the keys on the left (these go to the database).
+   Only change the text on the right — that's what the user sees.
+   ════════════════════════════════════════════════════════════════ */
+const displayLabels = {
+  "Dagelijkse roker — voorbereiding":            "Daily smoker — ready to quit",
+  "Dagelijkse roker — overweger":                "Daily smoker — considering quitting",
+  "Dagelijkse roker — nog niet klaar":           "Daily smoker — unmotivated to quit",
+  "Lichte/onregelmatige roker — voorbereiding":  "Light/occasional smoker — ready to quit completely",
+  "Lichte/onregelmatige roker — overweger":      "Light/occasional smoker — considering quitting completely",
+  "Lichte/onregelmatige roker — nog niet klaar": "Light/occasional smoker — unmotivated to quit completely",
+  "Ex-roker — hoog risico":                      "Ex-smoker — high risk of relapse",
+  "Ex-roker — gemiddeld risico":                 "Ex-smoker — medium risk of relapse",
+  "Ex-roker — laag risico":                      "Ex-smoker — low risk of relapse",
+  "Nooit-roker — hoog risico":                   "Never-smoker — high risk of starting to smoke",
+  "Nooit-roker — gemiddeld risico":              "Never-smoker — medium risk of starting to smoke",
+  "Nooit-roker — laag risico":                   "Never-smoker — low risk of starting to smoke"
+};
+
+/* ════════════════════════════════════════════════════════════════
+   DECISION LOGIC
+   ════════════════════════════════════════════════════════════════ */
+function getLabel(ans) {
+  const v = id => ans[id];
+  if (v("v1") === 2) {
+    if (!v("v3")) return null;
+    if ([1,2].includes(v("v3")))    return "Nooit-roker — hoog risico";
+    if ([3,4,5].includes(v("v3"))) return "Nooit-roker — gemiddeld risico";
+    if (v("v3") === 6)              return "Nooit-roker — laag risico";
+    return null;
+  }
+  if (v("v1") === 1) {
+    if (v("v2") === 1) {
+      if (v("v4") === 1) {
+        if (v("v10") === 1)              return "Dagelijkse roker — voorbereiding";
+        if ([2,3,4].includes(v("v10"))) return "Dagelijkse roker — overweger";
+        if ([5,6,7].includes(v("v10"))) return "Dagelijkse roker — nog niet klaar";
+      }
+      if (v("v4") === 2) {
+        if (v("v10") === 1)              return "Lichte/onregelmatige roker — voorbereiding";
+        if ([2,3,4].includes(v("v10"))) return "Lichte/onregelmatige roker — overweger";
+        if ([5,6,7].includes(v("v10"))) return "Lichte/onregelmatige roker — nog niet klaar";
+      }
+    }
+    if ([2,3,4].includes(v("v2"))) {
+      if ([1,2].includes(v("v7"))) {
+        if (v("v10") === 1)              return "Lichte/onregelmatige roker — voorbereiding";
+        if ([2,3,4].includes(v("v10"))) return "Lichte/onregelmatige roker — overweger";
+        if ([5,6,7].includes(v("v10"))) return "Lichte/onregelmatige roker — nog niet klaar";
+      }
+      if (v("v7") === 3) {
+        if ([1,2].includes(v("v3")))   return "Ex-roker — hoog risico";
+        if ([3,4,5].includes(v("v3"))) return "Ex-roker — gemiddeld risico";
+        if (v("v3") === 6)             return "Ex-roker — laag risico";
+      }
+    }
+  }
+  return null;
+}
+
+function getFlow(ans) {
+  const v = id => ans[id];
+  if (!v("v1")) return ["v1"];
+  if (v("v1") === 2) return ["v1","v3"];
+  if (!v("v2")) return ["v1","v2"];
+  if (v("v2") === 1) {
+    if (!v("v4")) return ["v1","v2","v4"];
+    if (v("v4") === 1) return ["v1","v2","v4","v5","v6","v10"];
+    if (v("v4") === 2) return ["v1","v2","v4","v7","v9","v10"];
+  }
+  if ([2,3,4].includes(v("v2"))) {
+    if (!v("v7")) return ["v1","v2","v7"];
+    if ([1,2].includes(v("v7"))) return ["v1","v2","v7","v9","v10"];
+    if (v("v7") === 3) return ["v1","v2","v7","v8","v3"];
+  }
+  return ["v1"];
+}
+
+/* ════════════════════════════════════════════════════════════════
+   QUIZ STATE
+   ════════════════════════════════════════════════════════════════ */
+let answers = {}, flowIds = ["v1"], currentStep = 0;
+
+function updateProgress() {
+  const pct = flowIds.length <= 1 ? 0 : (currentStep / flowIds.length * 100);
+  document.getElementById("progress").style.width = pct + "%";
+}
+
+function render() {
+  const area = document.getElementById("quiz-area");
+  const qId = flowIds[currentStep];
+  if (!qId) { showResult(); return; }
+  const q = questions.find(x => x.id === qId);
+  if (!q) { showResult(); return; }
+  const sel = answers[qId];
+  area.innerHTML = `
+    <div class="step-counter">Question ${currentStep+1} of ${Math.max(flowIds.length, currentStep+2)}</div>
+    <div class="question-card">
+      <div class="question-text">${q.text}</div>
+      <div class="options">
+        ${q.options.map(o => `
+          <button class="opt-btn${sel===o.val?" selected":""}" onclick="selectAnswer('${qId}',${o.val})">
+            <span class="check"></span>${o.label}
+          </button>`).join("")}
+      </div>
+    </div>
+    <div class="nav-row">
+      ${currentStep>0 ? `<button class="btn-back" onclick="goBack()">← Back</button>` : ""}
+      <button class="btn-next" ${sel===undefined?"disabled":""} onclick="goNext()">Next →</button>
+    </div>`;
+  updateProgress();
+}
+
+function selectAnswer(qId, val) {
+  answers[qId] = val;
+  const nf = getFlow(answers);
+  flowIds.forEach(id => { if (!nf.includes(id) && id !== qId) delete answers[id]; });
+  flowIds = nf;
+  render();
+}
+function goNext() {
+  if (answers[flowIds[currentStep]] === undefined) return;
+  currentStep++;
+  if (currentStep >= flowIds.length || getLabel(answers)) { showResult(); return; }
+  render();
+}
+function goBack() { if (currentStep > 0) { currentStep--; render(); } }
+
+async function showResult() {
+  document.getElementById("progress").style.width = "100%";
+  const label = getLabel(answers) || "Unknown";
+  const r = resultData[label] || { emoji:"❓", risk:"none", desc:"Please try again." };
+  const riskMap = { high:"High risk", medium:"Medium risk", low:"Low risk" };
+
+  document.getElementById("quiz-area").innerHTML = `
+    <div class="result-card">
+      <span class="result-emoji">${r.emoji}</span>
+      <div class="result-tag">Your profile</div>
+      ${r.risk!=="none" ? `<br><span class="risk-badge risk-${r.risk}">${riskMap[r.risk]}</span>` : ""}
+      <div class="result-label">${displayLabels[label] || label}</div>
+      <div class="result-desc">${r.desc}</div>
+      <div id="save-status" style="min-height:32px;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:13px;color:var(--text-muted)">Saving result…</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn-restart" onclick="restart()">↺ Restart</button>
+        <button class="btn-dashboard" onclick="showTab('dashboard')">📊 Dashboard</button>
+      </div>
+    </div>`;
+
+  const { ok, msg } = await saveResult(label);
+  const statusEl = document.getElementById("save-status");
+  if (statusEl) {
+    statusEl.innerHTML = ok
+      ? `<span class="saved-badge">✓ Saved to database</span>`
+      : `<span style="font-size:13px;color:var(--warning)">⚠️ ${msg || 'Failed to save'}</span>`;
+  }
+}
+
+function restart() { answers={}; flowIds=["v1"]; currentStep=0; render(); }
+
+/* ════════════════════════════════════════════════════════════════
+   DASHBOARD
+   ════════════════════════════════════════════════════════════════ */
+let chartAbs = null, chartPct = null;
+
+async function loadDashboard() {
+  document.getElementById("dash-content").innerHTML = `<div class="loading-msg">Fetching data from database…</div>`;
+
+  if (!isConfigured()) {
+    document.getElementById("dash-content").innerHTML = `
+      <div class="error-msg">
+        <strong>Supabase not yet configured.</strong><br>
+        Fill in <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> at the top of the script.
+      </div>`;
+    return;
+  }
+
+  const counts = await loadCounts();
+  if (counts === null) {
+    document.getElementById("dash-content").innerHTML = `
+      <div class="error-msg">
+        <strong>Unable to connect to the database.</strong><br>
+        Check your Supabase URL, ANON key, and Row Level Security settings.
+      </div>`;
+    return;
+  }
+
+  const total = ALL_LABELS.reduce((s,l) => s+(counts[l]||0), 0);
+  const values = ALL_LABELS.map(l => counts[l]||0);
+  const percents = values.map(v => total>0 ? Math.round(v/total*1000)/10 : 0);
+  const topIdx = values.indexOf(Math.max(...values));
+
+  if (total === 0) {
+    document.getElementById("dash-content").innerHTML =
+      `<div class="loading-msg" style="padding:4rem">No results in the database yet.<br><br>Take the quiz to be the first!</div>`;
+    return;
+  }
+
+  document.getElementById("dash-content").innerHTML = `
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total submitted</div>
+        <div class="stat-value">${total}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Most common</div>
+        <div class="stat-value-sm">${ALL_LABELS[topIdx]}<br>
+          <span style="color:var(--purple-mid);font-size:16px">${values[topIdx]}× (${percents[topIdx]}%)</span>
+        </div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Absolute counts per profile</div>
+      <div class="chart-wrap"><canvas id="cAbs"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Distribution in percentages (%)</div>
+      <div class="chart-wrap"><canvas id="cPct"></canvas></div>
+    </div>`;
+
+  const chartCfg = (data, suffix) => ({
+    type: 'bar',
+    data: {
+      labels: SHORT_LABELS,
+      datasets: [{
+        data,
+        backgroundColor: BAR_COLORS,
+        borderWidth: 0,
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: ctx => ALL_LABELS[ctx[0].dataIndex],
+            label: ctx => ` ${ctx.parsed.x}${suffix}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { color: 'rgba(127,119,221,0.1)' },
+          ticks: { color:'#6b6b8a', font:{family:"'Nunito Sans',sans-serif",size:12}, callback: v => v+suffix }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color:'#1a1a2e', font:{family:"'Nunito Sans',sans-serif",size:12} }
+        }
+      }
+    }
+  });
+
+  if (chartAbs) chartAbs.destroy();
+  if (chartPct) chartPct.destroy();
+  chartAbs = new Chart(document.getElementById("cAbs"), chartCfg(values, ''));
+  chartPct  = new Chart(document.getElementById("cPct"), chartCfg(percents, '%'));
+}
+
+/* ════════════════════════════════════════════════════════════════
+   TAB SWITCHING
+   ════════════════════════════════════════════════════════════════ */
+function showTab(tab) {
+  document.getElementById("quiz-view").style.display = tab==='quiz' ? 'block' : 'none';
+  document.getElementById("dashboard").style.display = tab==='dashboard' ? 'block' : 'none';
+  document.getElementById("tab-quiz").classList.toggle("active", tab==='quiz');
+  document.getElementById("tab-dash").classList.toggle("active", tab==='dashboard');
+  if (tab==='dashboard') loadDashboard();
+}
+
+/* ── INIT ── */
+render();
+</script>
+</body>
+</html>
